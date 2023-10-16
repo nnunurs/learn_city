@@ -1,0 +1,28 @@
+{
+    "type": "Feature",
+    "geometry": {
+     "type": "LineString",
+     "coordinates": [
+      [
+       19.9459978,
+       50.0559216
+      ],
+      [
+       19.9459697,
+       50.0560677
+      ]
+     ]
+    },
+    "properties": {
+     "osm_id": 825050434,
+     "smoothness": null,
+     "bridge": null,
+     "surface": "asphalt",
+     "name": "Starowiślna",
+     "layer": null,
+     "oneway": "yes",
+     "width": null,
+     "highway": "tertiary",
+     "tunnel": null
+    }
+   },

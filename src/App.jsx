@@ -1,72 +1,102 @@
-import { useState } from "react";
-import "./App.css";
-
-import Map from "react-map-gl";
-import data from "./data/out.json";
+import { useEffect, useState } from "react";
 import DeckGL from "@deck.gl/react";
-import { LineLayer } from "@deck.gl/layers";
+import Map from "react-map-gl";
+import { PathLayer } from "@deck.gl/layers";
+import streets from "./data/out_with_shape.json";
+
+import Quiz from "./components/Quiz";
+
+const data = [
+  {
+    name: "random-name",
+    color: [101, 147, 245],
+    path: [
+      [-74.00578, 40.713067],
+      [-74.004577, 40.712425],
+      [-74.003626, 40.71365],
+      [-74.002666, 40.714243],
+      [-74.002136, 40.715177],
+      [-73.998493, 40.713452],
+      [-73.997981, 40.713673],
+      [-73.997586, 40.713448],
+      [-73.99256, 40.713863],
+    ],
+  },
+];
 
 function App() {
-  const [long, setLong] = useState(0.0);
+  const [lon, setLon] = useState(0.0);
   const [lat, setLat] = useState(0.0);
-  const [zoom, setZoom] = useState(18.0);
+  const [zoom, setZoom] = useState(16.0);
+  const [currentStreet, setCurrentStreet] = useState([
+    { lon: 0.0, lat: 0.0, name: "loading" },
+  ]);
+  const [layers, setLayers] = useState(
+    new PathLayer({
+      id: "path-layer",
+      data,
+      getWidth: (data) => 7,
+      getColor: (data) => [255, 0, 0],
+      widthMinPixels: 7,
+    })
+  );
 
-  const layer_data = [
-    {
-      sourcePosition: [-122.41669, 37.7853],
-      targetPosition: [-122.41669, 37.781],
-    },
-  ];
+  const getRandomStreet = () => {
+    const random_street_key =
+      Object.keys(streets)[
+        Math.floor(Math.random() * Object.keys(streets).length)
+      ];
 
-  const layers = [new LineLayer({ id: "line-layer", layer_data })];
+    setCurrentStreet(streets[random_street_key]);
 
-  const randomStreet = () => {
-    const rand_key = data[Math.floor(Math.random() * data.length)];
-
-    console.log(rand_key);
-    setLat(parseFloat(rand_key.lat));
-    setLong(parseFloat(rand_key.lon));
+    console.log(streets[random_street_key][0]);
   };
 
-  const INITIAL_VIEW_STATE = {
-    longitude: -122.41669,
-    latitude: 37.7853,
-    zoom: 13,
-    pitch: 0,
-    bearing: 0,
-  };
+  useEffect(() => {
+    getRandomStreet();
+  }, []);
+
+  useEffect(() => {
+    setLat(parseFloat(currentStreet[0].path[0][1]));
+    setLon(parseFloat(currentStreet[0].path[0][0]));
+
+    setLayers(
+      new PathLayer({
+        id: "path-layer",
+        data: currentStreet,
+        getWidth: (data) => 7,
+        getColor: (data) => [255, 0, 0],
+        widthMinPixels: 7,
+      })
+    );
+  }, [currentStreet]);
 
   return (
-    <div className="flex flex-col">
-      <div className="flex m-3">
-        <button type="button" onClick={() => setLong(long + 10)}>
-          Move
-        </button>
-        <button type="button" onClick={() => setZoom(zoom + 0.5)}>
-          Zoom
-        </button>
-        <button type="button" onClick={randomStreet}>
-          Random street
-        </button>
+    <div>
+      <div className="flex flex-row">
+        <div className="flex m-3">
+          <button type="button" onClick={() => setZoom(zoom + 0.5)}>
+            Zoom
+          </button>
+          <button type="button" onClick={getRandomStreet}>
+            Random street
+          </button>
+          <h1>{currentStreet[0].name}</h1>
+        </div>
+        <Quiz correct={currentStreet[0].name} />
       </div>
-
       <DeckGL
-        initialViewState={INITIAL_VIEW_STATE}
+        initialViewState={{
+          longitude: lon,
+          latitude: lat,
+          zoom: zoom,
+        }}
+        style={{ width: 1300, height: 800, position: "relative" }}
         controller={true}
         layers={layers}
-        style={{ width: 1000, height: 600, position: "relative" }}
       >
         <Map
-          mapLib={import("mapbox-gl")}
-          initialViewState={{
-            longitude: -100,
-            latitude: 40,
-            zoom: 18,
-          }}
-          longitude={long}
-          latitude={lat}
-          zoom={zoom}
-          mapStyle="mapbox://styles/mapbox/streets-v9"
+          mapStyle="mapbox://styles/mapbox/streets-v11"
           mapboxAccessToken="pk.eyJ1IjoiaGFuZ29ydXMiLCJhIjoiY2s4OTRtY3h6MDJ1bDNmazZwa2lpMXd2aiJ9.OLbJaQCSeZfv2vJ9RGduMg"
         />
       </DeckGL>
