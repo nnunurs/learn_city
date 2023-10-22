@@ -3,18 +3,11 @@ import { useEffect, useState } from "react";
 import streets from "../data/out_with_shape.json";
 
 const shuffle = (array) => {
-  let currentIndex = array.length;
+  for (let i = array.length - 1; i > 0; i--) {
+    const randomIndex = Math.floor(Math.random() * i);
 
-  for (let i = currentIndex; i > 0; i--) {
-    const randomIndex = Math.floor(Math.random() * currentIndex);
-
-    [array[currentIndex], array[randomIndex]] = [
-      array[randomIndex],
-      array[currentIndex],
-    ];
+    [array[i], array[randomIndex]] = [array[randomIndex], array[i]];
   }
-
-  console.log(array);
   return array;
 };
 
@@ -28,31 +21,33 @@ const getRandomStreet = (streets) => {
   return streets[random_street_key][0].name;
 };
 
-function Quiz({ correct }) {
+function Quiz({ correct, newStreet }) {
   const [options, setOptions] = useState(["option1", "option2", "option3"]);
-
-  const filterUndefined = (item) => {
-    return item !== undefined;
-  };
+  const [score, setScore] = useState({ correct: 0, wrong: 0 });
+  const [checked, setChecked] = useState(false);
 
   const newOptions = () => {
     console.log("refreshing options", correct);
 
     setOptions(
-      shuffle(
-        [correct, getRandomStreet(streets), getRandomStreet(streets)].filter(
-          filterUndefined
-        )
-      )
+      shuffle([correct, getRandomStreet(streets), getRandomStreet(streets)])
     );
   };
 
   const checkAnswer = (option) => {
     if (option === correct) {
+      setScore({ ...score, correct: score.correct + 1 });
       console.log("correct");
     } else {
+      setScore({ ...score, wrong: score.wrong + 1 });
       console.log("wrong");
     }
+
+    setChecked(true);
+    setTimeout(() => {
+      newStreet();
+      setChecked(false);
+    }, 1000);
   };
 
   useEffect(() => {
@@ -61,19 +56,32 @@ function Quiz({ correct }) {
   }, [correct]);
 
   return (
-    <div>
-      <button onClick={() => newOptions()}>New options</button>
-      {options.map((option) => {
-        return (
-          <button
-            key={option}
-            type="button"
-            onClick={() => checkAnswer(option)}
-          >
-            {option}
-          </button>
-        );
-      })}
+    <div className="flex ">
+      <div className="">
+        <p>Correct answers: {score.correct}</p>
+        <p>Wrong answers: {score.wrong}</p>
+      </div>
+      {/* <button onClick={() => newOptions()}>New options</button> */}
+      <div className="flex flex-col">
+        {options.map((option) => {
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => checkAnswer(option)}
+              className={
+                option === correct && checked
+                  ? "bg-lime-500"
+                  : checked
+                  ? "bg-red-600"
+                  : ""
+              }
+            >
+              {option}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
