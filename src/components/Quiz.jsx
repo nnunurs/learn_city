@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
-import streets from "../data/out_with_shape.json";
+import streets from "../data/krakow_streets.json";
 
 const shuffle = (array) => {
   for (let i = array.length - 1; i > 0; i--) {

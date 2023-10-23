@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import DeckGL from "@deck.gl/react";
 import Map from "react-map-gl";
 import { PathLayer } from "@deck.gl/layers";
-import streets from "./data/out_with_shape.json";
+import streets from "./data/krakow_streets.json";
+import weights from "./data/krakow_weights.json";
+import weightedRandom from "./scripts/weighted_random";
 
 import Quiz from "./components/Quiz";
 
@@ -11,7 +13,7 @@ function App() {
   const [lat, setLat] = useState(0.0);
   const [zoom, setZoom] = useState(16.0);
   const [currentStreet, setCurrentStreet] = useState([
-    { lon: 0.0, lat: 0.0, name: "loading", path: [[0, 0]] },
+    { name: "loading", path: [[0, 0]] },
   ]);
   const [layers, setLayers] = useState(
     new PathLayer({
@@ -19,15 +21,19 @@ function App() {
       data: currentStreet,
       getWidth: (data) => 7,
       getColor: (data) => [255, 0, 0],
-      widthMinPixels: 7,
+      widthMinPixels: 3,
     })
   );
 
   const getRandomStreet = () => {
-    const random_street_key =
-      Object.keys(streets)[
-        Math.floor(Math.random() * Object.keys(streets).length)
-      ];
+    // const random_street_key =
+    //   Object.keys(streets)[
+    //     Math.floor(Math.random() * Object.keys(streets).length)
+    //   ];
+    const random_street_key = weightedRandom(
+      Object.keys(weights),
+      Object.values(weights)
+    ).item;
 
     setCurrentStreet(streets[random_street_key]);
 
