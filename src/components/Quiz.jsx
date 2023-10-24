@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
-import streets from "../data/krakow_streets.json";
+import { useCookies } from "react-cookie";
 
 const shuffle = (array) => {
   for (let i = array.length - 1; i > 0; i--) {
@@ -21,9 +21,10 @@ const getRandomStreet = (streets) => {
   return streets[random_street_key][0].name;
 };
 
-function Quiz({ correct, newStreet }) {
+function Quiz({ correct, streets, newStreet, city }) {
   const [options, setOptions] = useState(["option1", "option2", "option3"]);
-  const [score, setScore] = useState({ correct: 0, wrong: 0 });
+  // const [score, setScore] = useState({ correct: 0, wrong: 0 });
+  const [cookies, setCookie] = useCookies(["score"]);
   const [checked, setChecked] = useState(false);
 
   const newOptions = () => {
@@ -36,10 +37,26 @@ function Quiz({ correct, newStreet }) {
 
   const checkAnswer = (option) => {
     if (option === correct) {
-      setScore({ ...score, correct: score.correct + 1 });
+      // setScore({ ...score, correct: score.correct + 1 });
+      setCookie("score", {
+        ...cookies.score,
+        [city]: {
+          ...cookies.score[city],
+          correct: cookies.score[city].correct + 1,
+          known: [...cookies.score[city].known, correct],
+        },
+      });
       console.log("correct");
     } else {
-      setScore({ ...score, wrong: score.wrong + 1 });
+      // setScore({ ...score, wrong: score.wrong + 1 });
+      setCookie("score", {
+        ...cookies.score,
+        [city]: {
+          ...cookies.score[city],
+          wrong: cookies.score[city].wrong + 1,
+          mistakes: [...cookies.score[city].mistakes, correct],
+        },
+      });
       console.log("wrong");
     }
 
@@ -56,13 +73,17 @@ function Quiz({ correct, newStreet }) {
   }, [correct]);
 
   return (
-    <div className="flex ">
-      <div className="">
-        <p>Correct answers: {score.correct}</p>
-        <p>Wrong answers: {score.wrong}</p>
+    <div className="flex flex-col">
+      <div className="flex flex-col">
+        <p>
+          Poprawne odpowiedzi: {cookies.score ? cookies.score[city].correct : 0}
+        </p>
+        <p>
+          Błędne odpowiedzi: {cookies.score ? cookies.score[city].wrong : 0}
+        </p>
       </div>
       {/* <button onClick={() => newOptions()}>New options</button> */}
-      <div className="flex flex-col">
+      <div className="flex flex-col m-5">
         {options.map((option) => {
           return (
             <button
@@ -70,11 +91,11 @@ function Quiz({ correct, newStreet }) {
               type="button"
               onClick={() => checkAnswer(option)}
               className={
-                option === correct && checked
+                (option === correct && checked
                   ? "bg-lime-500"
                   : checked
                   ? "bg-red-600"
-                  : ""
+                  : "") + " mt-3"
               }
             >
               {option}

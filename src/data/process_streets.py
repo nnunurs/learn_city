@@ -1,6 +1,15 @@
 import json
 import math
 
+# how to get data
+# 1.    get area code of the city with area[name="{city_name}"]
+# 2.
+# area({area_code});
+# rel(area)["boundary"="administrative"];
+# out geom;
+# 3. find relation id with the above code
+# 4. find city outline with rel({relation_if})
+
 
 def is_bridge(street):
     if street["properties"]["bridge"] != None:
@@ -29,11 +38,11 @@ def is_inside(verts, test):
     return c
 
 
-center = (50.061708366902316, 19.937352065162212)
+center = (49.29389943354241, 19.95370589727813)
 
 city = input("wpisz nazwe miasta\n")
 
-with open(f"{city}_boundry.geojson") as boundry_file:
+with open(f"{city}_boundary.geojson") as boundry_file:
     boundry_polygon = [
         coord[::-1]
         for coord in json.load(boundry_file)["features"][0]["geometry"]["coordinates"][
