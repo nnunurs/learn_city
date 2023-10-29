@@ -11,6 +11,10 @@ const shuffle = (array) => {
   return array;
 };
 
+const getPercentage = (part, full) => {
+  return Math.round((part / full) * 100).toString() + "%";
+};
+
 const getRandomStreet = (streets) => {
   const random_street_key =
     Object.keys(streets)[
@@ -60,6 +64,8 @@ function Quiz({ correct, streets, newStreet, city }) {
       console.log("wrong");
     }
 
+    console.log(cookies.score[city].known.length, cookies.score[city].wrong);
+
     setChecked(true);
     setTimeout(() => {
       newStreet();
@@ -80,6 +86,15 @@ function Quiz({ correct, streets, newStreet, city }) {
         </p>
         <p>
           Błędne odpowiedzi: {cookies.score ? cookies.score[city].wrong : 0}
+        </p>
+        <p>
+          Znane ulice:{" "}
+          {cookies.score
+            ? getPercentage(
+                cookies.score[city].known.length,
+                Object.keys(streets).length
+              )
+            : "0%"}
         </p>
       </div>
       {/* <button onClick={() => newOptions()}>New options</button> */}
