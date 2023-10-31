@@ -38,24 +38,24 @@ def is_inside(verts, test):
     return c
 
 
-center = (49.29389943354241, 19.95370589727813)
-
-city = input("wpisz nazwe miasta\n")
-
-with open(f"{city}_boundary.geojson") as boundry_file:
-    boundry_polygon = [
-        coord[::-1]
-        for coord in json.load(boundry_file)["features"][0]["geometry"]["coordinates"][
-            0
+def get_boundry_polygon():
+    with open(f"{city}_boundary.geojson") as boundry_file:
+        return [
+            coord[::-1]
+            for coord in json.load(boundry_file)["features"][0]["geometry"][
+                "coordinates"
+            ][0]
         ]
-    ]
+
+
+def process_data(city):
+    center = (49.29389943354241, 19.95370589727813)
+
+    boundry_polygon = get_boundry_polygon()
 
     with open(f"{city}_in_streets.geojson") as file:
         data = json.load(file)["features"]
-
-        out_names = []
         out = {}
-
         max_dist = 0
 
         for street in data:
@@ -82,19 +82,104 @@ with open(f"{city}_boundary.geojson") as boundry_file:
                 else:
                     print("street not in boundry")
 
-print(max_dist)
-json_obj = json.dumps(out, indent=True, ensure_ascii=False)
-with open(f"{city}_streets.json", "w") as out:
-    out.write(json_obj)
+    print(max_dist)
+    json_obj = json.dumps(out, indent=True, ensure_ascii=False)
+    with open(f"{city}_streets.json", "w") as out:
+        out.write(json_obj)
 
-PENALTY = 0.9
-weights = {}
-with open(f"{city}_streets.json") as file:
-    streets = json.load(file)
 
-    for street in streets:
-        weights[street] = max_dist - streets[street][0]["dist"] * PENALTY
+def generate_weights(city):
+    with open(f"{city}_in_streets.geojson") as file:
+        data = json.load(file)["features"]
 
-json_obj = json.dumps(weights, indent=True, ensure_ascii=False)
-with open(f"{city}_weights.json", "w") as out:
-    out.write(json_obj)
+        max_dist = 0
+        center = (49.29389943354241, 19.95370589727813)
+        boundry_polygon = get_boundry_polygon()
+
+        for street in data:
+            name = street["properties"]["name"]
+            points = [coord[::-1] for coord in street["geometry"]["coordinates"]]
+
+            if name != None and not is_bridge(street):
+                if is_inside(boundry_polygon, points[0]):
+                    dist = get_distance(
+                        center,
+                        [float(x) for x in points[0]],
+                    )
+                    max_dist = max(dist, max_dist)
+                else:
+                    print("street not in boundry")
+
+    penalty = float(input("wpisz wspolczynnik kary\n"))
+    weights = {}
+
+    with open(f"{city}_divisions.json") as div_file:
+        divs = json.load(div_file)
+
+        for div in divs:
+            for street in divs[div]:
+                # print(divs[div][street][0]["dist"] * 0.9)
+                if div in weights:
+                    weights[div][street] = (
+                        max_dist - divs[div][street][0]["dist"] * penalty
+                    )
+                else:
+                    weights[div] = {
+                        street: max_dist - divs[div][street][0]["dist"] * penalty
+                    }
+
+    json_obj = json.dumps(weights, indent=True, ensure_ascii=False)
+    with open(f"{city}_weights.json", "w") as out:
+        out.write(json_obj)
+
+
+def generate_divisions(city):
+    with open(f"{city}_divisions.geojson") as streets_file:
+        divs = json.load(streets_file)["features"]
+
+        with open(f"{city}_streets.json") as streets_file:
+            streets = json.load(streets_file)
+
+            div_out = {}
+
+            for div in divs:
+                if "relation" in div["properties"]["@id"]:
+                    div_name = div["properties"]["name"].lower().replace(" ", "_")
+                    # print(div_name)
+                    for street_main in streets:
+                        for street in streets[street_main]:
+                            poly = div["geometry"]["coordinates"][0]
+                            if is_inside(
+                                poly,
+                                street["path"][0],
+                            ):
+                                print(street["name"])
+                                if div_name in div_out:
+                                    if street_main in div_out[div_name]:
+                                        div_out[div_name][street_main].append(street)
+                                    else:
+                                        div_out[div_name][street_main] = [street]
+                                else:
+                                    div_out[div_name] = {street_main: [street]}
+                                # break
+
+            json_obj = json.dumps(div_out, indent=True, ensure_ascii=False)
+            with open(f"{city}_divisions.json", "w") as out:
+                out.write(json_obj)
+
+
+city = input("wpisz nazwe miasta\n")
+choice = input("1. process data\n2. generate weights\n3. both\n4.generate divisions\n")
+
+match choice:
+    case "1":
+        process_data(city)
+    case "2":
+        generate_weights(city)
+    case "3":
+        process_data(city)
+        generate_weights(city)
+    case "4":
+        generate_divisions(city)
+    case _:
+        print("wrong choice")

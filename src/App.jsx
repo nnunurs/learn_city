@@ -1,12 +1,16 @@
-import MapGuess from "./components/MapGuess";
+import { ChakraProvider } from "@chakra-ui/react";
 import { CookiesProvider } from "react-cookie";
+
+import MapGuess from "./components/MapGuess";
 
 function App() {
   return (
     <div>
-      <CookiesProvider defaultSetOptions={{ path: "/" }}>
-        <MapGuess />
-      </CookiesProvider>
+      <ChakraProvider>
+        <CookiesProvider defaultSetOptions={{ path: "/" }}>
+          <MapGuess />
+        </CookiesProvider>
+      </ChakraProvider>
     </div>
   );
 }

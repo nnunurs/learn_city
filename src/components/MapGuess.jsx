@@ -4,7 +4,7 @@ import Map from "react-map-gl";
 import { PathLayer } from "@deck.gl/layers";
 import { useCookies } from "react-cookie";
 
-import krakowStreets from "../data/krakow_streets.json";
+import krakowStreets from "../data/krakow_divisions.json";
 import zakopaneStreets from "../data/zakopane_streets.json";
 import krakowWeights from "../data/krakow_weights.json";
 import zakopaneWeights from "../data/zakopane_weights.json";
@@ -15,9 +15,10 @@ import Quiz from "./Quiz";
 function MapGuess() {
   const [lon, setLon] = useState(0.0);
   const [lat, setLat] = useState(0.0);
-  const [city, setCity] = useState("zakopane");
-  const [streets, setStreets] = useState(zakopaneStreets);
-  const [weights, setWeights] = useState(zakopaneWeights);
+  const [city, setCity] = useState("krakow");
+  const [streets, setStreets] = useState(krakowStreets["łagiewniki-borek_fałęcki"]);
+  const [division, setDivision] = useState("łagiewniki-borek_fałęcki");
+  const [weights, setWeights] = useState(krakowWeights["łagiewniki-borek_fałęcki"]);
   const [currentStreet, setCurrentStreet] = useState([
     { name: "loading", path: [[0, 0]] },
   ]);
@@ -25,8 +26,8 @@ function MapGuess() {
     new PathLayer({
       id: "path-layer",
       data: currentStreet,
-      getWidth: (data) => 7,
-      getColor: (data) => [255, 0, 0],
+      getWidth: 7,
+      getColor: [255, 0, 0],
       widthMinPixels: 3,
     })
   );
@@ -76,8 +77,8 @@ function MapGuess() {
   useEffect(() => {
     switch (city) {
       case "krakow":
-        setStreets(krakowStreets);
-        setWeights(krakowWeights);
+        setStreets(krakowStreets[division]);
+        setWeights(krakowWeights[division]);
         break;
       case "zakopane":
         setStreets(zakopaneStreets);
@@ -93,8 +94,8 @@ function MapGuess() {
       new PathLayer({
         id: "path-layer",
         data: currentStreet,
-        getWidth: (data) => 7,
-        getColor: (data) => [255, 0, 0],
+        getWidth: 7,
+        getColor: [255, 0, 0],
         widthMinPixels: 7,
       })
     );
