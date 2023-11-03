@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import DeckGL from "@deck.gl/react";
+import DeckGL, { FlyToInterpolator } from "deck.gl";
 import Map from "react-map-gl";
-import { PathLayer } from "@deck.gl/layers";
+import { PathLayer, PolygonLayer } from "@deck.gl/layers";
 import { useCookies } from "react-cookie";
 
+import { Button, Text, Badge } from "@chakra-ui/react";
+
 import krakowStreets from "../data/krakow_divisions.json";
+import krakowDivisions from "../data/krakow_divisions_filtered.json";
 import zakopaneStreets from "../data/zakopane_streets.json";
 import krakowWeights from "../data/krakow_weights.json";
 import zakopaneWeights from "../data/zakopane_weights.json";
@@ -12,13 +15,33 @@ import zakopaneWeights from "../data/zakopane_weights.json";
 import weightedRandom from "../scripts/weighted_random";
 import Quiz from "./Quiz";
 
+const center = {
+  krakow: (50.06168144356519, 19.937328289497746),
+  zakopane: (49.29389943354241, 19.95370589727813),
+};
+
+const initialViewState = {
+  longitude: center.krakow[0],
+  latitude: center.krakow[1],
+  zoom: 10.5,
+  controller: true,
+};
+
 function MapGuess() {
-  const [lon, setLon] = useState(0.0);
-  const [lat, setLat] = useState(0.0);
+  const [viewState, setViewState] = useState({
+    ...initialViewState,
+  });
+  const [hovered, setHovered] = useState();
+  const [visible, setVisible] = useState(false);
+  const [name, setName] = useState("");
   const [city, setCity] = useState("krakow");
-  const [streets, setStreets] = useState(krakowStreets["łagiewniki-borek_fałęcki"]);
+  const [streets, setStreets] = useState(
+    krakowStreets["łagiewniki-borek_fałęcki"]
+  );
   const [division, setDivision] = useState("łagiewniki-borek_fałęcki");
-  const [weights, setWeights] = useState(krakowWeights["łagiewniki-borek_fałęcki"]);
+  const [weights, setWeights] = useState(
+    krakowWeights["łagiewniki-borek_fałęcki"]
+  );
   const [currentStreet, setCurrentStreet] = useState([
     { name: "loading", path: [[0, 0]] },
   ]);
@@ -31,6 +54,36 @@ function MapGuess() {
       widthMinPixels: 3,
     })
   );
+
+  const divisions_layer = new PolygonLayer({
+    id: "divisions-layer",
+    data: krakowDivisions.features,
+    pickable: true,
+    filled: true,
+    lineWidthMinPixels: 1,
+    getPolygon: (d) => d.geometry.coordinates,
+    getFillColor: [199, 149, 80, 50],
+    getLineColor: [235, 140, 9],
+    getLineWidth: 100,
+    onClick: (info) =>
+      changeDivision(
+        info.object.properties.name.toLowerCase().replace(" ", "_")
+      ),
+    onHover: (info) => (info.picked ? enableTooltip(info) : setVisible(false)),
+  });
+
+  const enableTooltip = (info) => {
+    setHovered(info);
+    setVisible(true);
+    setName(info.object.properties.name);
+  };
+
+  const changeDivision = (division) => {
+    setDivision(division);
+    setStreets(krakowStreets[division]);
+    setWeights(krakowWeights[division]);
+    // getRandomStreet();
+  };
 
   const [cookies, setCookie] = useCookies(["score"]);
 
@@ -52,16 +105,13 @@ function MapGuess() {
   };
 
   const getRandomStreet = () => {
-    // const random_street_key =
-    //   Object.keys(streets)[
-    //     Math.floor(Math.random() * Object.keys(streets).length)
-    //   ];
     const random_street_key = weightedRandom(
       Object.keys(weights),
       Object.values(weights)
     ).item;
 
     setCurrentStreet(streets[random_street_key]);
+    setVisible(false);
 
     console.log(streets[random_street_key][0]);
   };
@@ -72,7 +122,7 @@ function MapGuess() {
 
   useEffect(() => {
     getRandomStreet();
-  }, [streets]);
+  }, [streets, division]);
 
   useEffect(() => {
     switch (city) {
@@ -87,8 +137,13 @@ function MapGuess() {
   }, [city]);
 
   useEffect(() => {
-    setLat(parseFloat(currentStreet[0].path[0][1]));
-    setLon(parseFloat(currentStreet[0].path[0][0]));
+    setViewState({
+      longitude: currentStreet[0].path[0][0],
+      latitude: currentStreet[0].path[0][1],
+      zoom: 16,
+      transitionDuration: 1000,
+      transitionInterpolator: new FlyToInterpolator(),
+    });
 
     setLayers(
       new PathLayer({
@@ -104,12 +159,25 @@ function MapGuess() {
   return (
     <div className="flex">
       <div className="m-5 justify-center align-center">
+        {visible ? (
+          <Badge
+            className="fixed z-10"
+            fontSize="2xl"
+            style={{
+              left: hovered.x + 30,
+              top: hovered.y + 50,
+              pointerEvents: "none",
+            }}
+          >
+            {name}
+          </Badge>
+        ) : (
+          ""
+        )}
         <DeckGL
-          initialViewState={{
-            longitude: lon,
-            latitude: lat,
-            zoom: 16,
-          }}
+          initialViewState={initialViewState}
+          viewState={viewState}
+          onViewStateChange={(e) => setViewState(e.viewState)}
           style={{ width: 1300, height: 800, position: "relative" }}
           controller={true}
           layers={layers}
@@ -122,21 +190,36 @@ function MapGuess() {
         </DeckGL>
       </div>
       <div className="flex flex-col m-5">
+        <Button
+          type="button"
+          onClick={() => {
+            setViewState({
+              latitude: 50.06168144356519,
+              longitude: 19.937328289497746,
+              zoom: 10.5,
+              transitionDuration: 1000,
+              transitionInterpolator: new FlyToInterpolator(),
+            });
+            setLayers(divisions_layer);
+          }}
+        >
+          Dzielnice
+        </Button>
         <div className="flex m-3 ">
-          <button
+          <Button
             type="button"
             onClick={() => {
               city === "krakow" ? setCity("zakopane") : setCity("krakow");
             }}
           >
             {city === "krakow" ? "Zakopane" : "Kraków"}
-          </button>
-          {/* <button type="button" onClick={getRandomStreet}>
+          </Button>
+          {/* <Button type="button" onClick={getRandomStreet}>
             Random street
-          </button> */}
-          <button type="button" onClick={() => cleanCookies()}>
+          </Button> */}
+          <Button type="button" onClick={() => cleanCookies()}>
             Zresetuj postępy
-          </button>
+          </Button>
           {/* <h1>{currentStreet[0].name}</h1> */}
         </div>
         <Quiz

@@ -10,6 +10,12 @@ import math
 # 3. find relation id with the above code
 # 4. find city outline with rel({relation_if})
 
+global center
+center = {
+    "krakow": (50.06168144356519, 19.937328289497746),
+    "zakopane": (49.29389943354241, 19.95370589727813),
+}
+
 
 def is_bridge(street):
     if street["properties"]["bridge"] != None:
@@ -49,8 +55,6 @@ def get_boundry_polygon():
 
 
 def process_data(city):
-    center = (49.29389943354241, 19.95370589727813)
-
     boundry_polygon = get_boundry_polygon()
 
     with open(f"{city}_in_streets.geojson") as file:
@@ -64,7 +68,7 @@ def process_data(city):
             if name != None and not is_bridge(street):
                 if is_inside(boundry_polygon, points[0]):
                     dist = get_distance(
-                        center,
+                        center[city],
                         [float(x) for x in points[0]],
                     )
                     max_dist = max(dist, max_dist)
@@ -93,7 +97,6 @@ def generate_weights(city):
         data = json.load(file)["features"]
 
         max_dist = 0
-        center = (49.29389943354241, 19.95370589727813)
         boundry_polygon = get_boundry_polygon()
 
         for street in data:
@@ -103,7 +106,7 @@ def generate_weights(city):
             if name != None and not is_bridge(street):
                 if is_inside(boundry_polygon, points[0]):
                     dist = get_distance(
-                        center,
+                        center[city],
                         [float(x) for x in points[0]],
                     )
                     max_dist = max(dist, max_dist)
@@ -134,7 +137,7 @@ def generate_weights(city):
 
 
 def generate_divisions(city):
-    with open(f"{city}_divisions.geojson") as streets_file:
+    with open(f"{city}_divisions_in.geojson") as streets_file:
         divs = json.load(streets_file)["features"]
 
         with open(f"{city}_streets.json") as streets_file:
@@ -168,8 +171,54 @@ def generate_divisions(city):
                 out.write(json_obj)
 
 
+def reverse_divisions(city):
+    with open(f"{city}_divisions_in.json") as div_file:
+        divs = json.load(div_file)
+
+        new_features = []
+
+        for div in divs["features"]:
+            if "relation" in div["properties"]["@id"]:
+                print(div["geometry"]["coordinates"][0])
+                new_features.append(
+                    {
+                        **div,
+                        "geometry": {
+                            **div["geometry"],
+                            "coordinates": [
+                                coord[::-1]
+                                for coord in div["geometry"]["coordinates"][0]
+                            ],
+                        },
+                    }
+                )
+
+        divs["features"] = new_features
+
+        json_obj = json.dumps(divs, indent=True, ensure_ascii=False)
+        with open(f"{city}_divisions_reversed.json", "w") as out:
+            out.write(json_obj)
+
+
+def filter_division(city):
+    with open(f"{city}_divisions_in.json") as div_file:
+        divs = json.load(div_file)
+
+        new_features = list(
+            filter(lambda x: "relation" in x["properties"]["@id"], divs["features"])
+        )
+
+        divs["features"] = new_features
+
+        json_obj = json.dumps(divs, indent=True, ensure_ascii=False)
+        with open(f"{city}_divisions_filtered.json", "w") as out:
+            out.write(json_obj)
+
+
 city = input("wpisz nazwe miasta\n")
-choice = input("1. process data\n2. generate weights\n3. both\n4.generate divisions\n")
+choice = input(
+    "1. process data\n2. generate weights\n3. both\n4. generate divisions\n5. reverse divisions\n6. filter divisions\n"
+)
 
 match choice:
     case "1":
@@ -181,5 +230,9 @@ match choice:
         generate_weights(city)
     case "4":
         generate_divisions(city)
+    case "5":
+        reverse_divisions(city)
+    case "6":
+        filter_division(city)
     case _:
         print("wrong choice")

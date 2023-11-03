@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
+import { Button } from "@chakra-ui/react";
+
 const shuffle = (array) => {
   for (let i = array.length - 1; i > 0; i--) {
     const randomIndex = Math.floor(Math.random() * i);
@@ -101,7 +103,7 @@ function Quiz({ correct, streets, newStreet, city }) {
       <div className="flex flex-col m-5">
         {options.map((option) => {
           return (
-            <button
+            <Button
               key={option}
               type="button"
               onClick={() => checkAnswer(option)}
@@ -114,7 +116,7 @@ function Quiz({ correct, streets, newStreet, city }) {
               }
             >
               {option}
-            </button>
+            </Button>
           );
         })}
       </div>
