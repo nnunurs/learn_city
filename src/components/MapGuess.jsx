@@ -180,9 +180,10 @@ function MapGuess() {
         id: "path-layer",
         data: currentStreet,
         getWidth: 7,
-        lineJointRounded: true,
-        getColor: [255, 0, 0],
-        widthMinPixels: 7,
+        capRounded: true,
+        jointRounded: true,
+        getColor: [79, 100, 255],
+        widthMinPixels: 3,
       })
     );
   }, [currentStreet]);
