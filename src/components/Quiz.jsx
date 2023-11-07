@@ -27,7 +27,7 @@ const getRandomStreet = (streets) => {
   return streets[random_street_key][0].name;
 };
 
-function Quiz({ correct, streets, newStreet, city }) {
+function Quiz({ correct, streets, newStreet, city, division }) {
   const [options, setOptions] = useState(["option1", "option2", "option3"]);
   // const [score, setScore] = useState({ correct: 0, wrong: 0 });
   const [cookies, setCookie] = useCookies(["score"]);
@@ -48,8 +48,11 @@ function Quiz({ correct, streets, newStreet, city }) {
         ...cookies.score,
         [city]: {
           ...cookies.score[city],
-          correct: cookies.score[city].correct + 1,
-          known: [...cookies.score[city].known, correct],
+          [division]: {
+            ...cookies.score[city][division],
+            correct: cookies.score[city][division].correct + 1,
+            known: [...cookies.score[city][division].known, correct],
+          },
         },
       });
       console.log("correct");
@@ -59,14 +62,17 @@ function Quiz({ correct, streets, newStreet, city }) {
         ...cookies.score,
         [city]: {
           ...cookies.score[city],
-          wrong: cookies.score[city].wrong + 1,
-          mistakes: [...cookies.score[city].mistakes, correct],
+          [division]: {
+            ...cookies.score[city][division],
+            wrong: cookies.score[city][division].wrong + 1,
+            mistakes: [...cookies.score[city][division].mistakes, correct],
+          },
         },
       });
       console.log("wrong");
     }
 
-    console.log(cookies.score[city].known.length, cookies.score[city].wrong);
+    // console.log(cookies.score[city].known.length, cookies.score[city].wrong);
 
     setChecked(true);
     setTimeout(() => {
@@ -82,38 +88,46 @@ function Quiz({ correct, streets, newStreet, city }) {
 
   return (
     <div className="flex flex-col">
-      <div className="flex flex-col">
-        <p>
-          Poprawne odpowiedzi: {cookies.score ? cookies.score[city].correct : 0}
-        </p>
-        <p>
-          Błędne odpowiedzi: {cookies.score ? cookies.score[city].wrong : 0}
-        </p>
-        <p>
-          Znane ulice:{" "}
-          {cookies.score
-            ? getPercentage(
-                cookies.score[city].known.length,
-                Object.keys(streets).length
-              )
-            : "0%"}
-        </p>
-      </div>
+      {cookies.score[city][division] ? (
+        <div className="flex flex-col">
+          <p>
+            Poprawne odpowiedzi:{" "}
+            {cookies.score ? cookies.score[city][division].correct : 0}
+          </p>
+          <p>
+            Błędne odpowiedzi:{" "}
+            {cookies.score ? cookies.score[city][division].wrong : 0}
+          </p>
+          <p>
+            Poznane ulice w tej dzielnicy:{" "}
+            {cookies.score
+              ? getPercentage(
+                  cookies.score[city][division].known.length,
+                  Object.keys(streets).length
+                )
+              : "0%"}
+          </p>
+        </div>
+      ) : (
+        "Zmienianie miasta..."
+      )}
+
       {/* <button onClick={() => newOptions()}>New options</button> */}
       <div className="flex flex-col m-5">
-        {options.map((option) => {
+        {options.map((option, i) => {
           return (
             <Button
-              key={option}
+              key={i}
               type="button"
               onClick={() => checkAnswer(option)}
-              className={
-                (option === correct && checked
-                  ? "bg-lime-500"
+              colorScheme={
+                option === correct && checked
+                  ? "green"
                   : checked
-                  ? "bg-red-600"
-                  : "") + " mt-3"
+                  ? "red"
+                  : "gray"
               }
+              className={"mt-3"}
             >
               {option}
             </Button>

@@ -35,13 +35,9 @@ function MapGuess() {
   const [visible, setVisible] = useState(false);
   const [name, setName] = useState("");
   const [city, setCity] = useState("krakow");
-  const [streets, setStreets] = useState(
-    krakowStreets["łagiewniki-borek_fałęcki"]
-  );
-  const [division, setDivision] = useState("łagiewniki-borek_fałęcki");
-  const [weights, setWeights] = useState(
-    krakowWeights["łagiewniki-borek_fałęcki"]
-  );
+  const [streets, setStreets] = useState(krakowStreets["stare_miasto"]);
+  const [division, setDivision] = useState("stare_miasto");
+  const [weights, setWeights] = useState(krakowWeights["stare_miasto"]);
   const [currentStreet, setCurrentStreet] = useState([
     { name: "loading", path: [[0, 0]] },
   ]);
@@ -78,30 +74,50 @@ function MapGuess() {
     setName(info.object.properties.name);
   };
 
-  const changeDivision = (division) => {
-    setDivision(division);
-    setStreets(krakowStreets[division]);
-    setWeights(krakowWeights[division]);
+  const changeDivision = (div) => {
+    console.log(div, division);
+    if (div === division) {
+      getRandomStreet();
+    } else {
+      setDivision(div);
+      setStreets(krakowStreets[div]);
+      setWeights(krakowWeights[div]);
+    }
     // getRandomStreet();
   };
 
   const [cookies, setCookie] = useCookies(["score"]);
 
   const cleanCookies = () => {
+    const new_score = Object.keys(krakowStreets).reduce(
+      (o, key) => ({
+        ...o,
+        [key]: { correct: 0, wrong: 0, known: [], mistakes: [] },
+      }),
+      {}
+    );
+
     setCookie("score", {
-      krakow: { correct: 0, wrong: 0, known: [], mistakes: [] },
-      zakopane: {
-        correct: 0,
-        wrong: 0,
-        known: [],
-        mistakes: [],
-      },
+      krakow: new_score,
+      zakopane: { zakopane: { correct: 0, wrong: 0, known: [], mistakes: [] } },
     });
   };
 
   const onStartup = () => {
     !cookies.score ? cleanCookies() : {};
     getRandomStreet();
+  };
+
+  const enableDivisionsView = () => {
+    setCity("krakow");
+    setViewState({
+      latitude: 50.06168144356519,
+      longitude: 19.937328289497746,
+      zoom: 10.5,
+      transitionDuration: 1000,
+      transitionInterpolator: new FlyToInterpolator(),
+    });
+    setLayers(divisions_layer);
   };
 
   const getRandomStreet = () => {
@@ -122,17 +138,28 @@ function MapGuess() {
 
   useEffect(() => {
     getRandomStreet();
-  }, [streets, division]);
+  }, [streets]);
 
   useEffect(() => {
     switch (city) {
       case "krakow":
-        setStreets(krakowStreets[division]);
-        setWeights(krakowWeights[division]);
+        setDivision("stare_miasto");
+        // setStreets(krakowStreets[division]);
+        // setWeights(krakowWeights[division]);
+        enableDivisionsView();
         break;
       case "zakopane":
+        setDivision("zakopane");
         setStreets(zakopaneStreets);
         setWeights(zakopaneWeights);
+    }
+
+    if (division === undefined) {
+      if (city === "krakow") {
+        setDivision("stare_miasto");
+      } else {
+        setDivision("zakopane");
+      }
     }
   }, [city]);
 
@@ -157,7 +184,7 @@ function MapGuess() {
   }, [currentStreet]);
 
   return (
-    <div className="flex">
+    <div className="flex h-screen">
       <div className="m-5 justify-center align-center">
         {visible ? (
           <Badge
@@ -183,7 +210,12 @@ function MapGuess() {
           }}
           viewState={viewState}
           onViewStateChange={(e) => setViewState(e.viewState)}
-          style={{ width: 1300, height: 800, position: "relative" }}
+          style={{
+            width: "70%",
+            height: "80%",
+            left: "2%",
+            top: "5%",
+          }}
           controller={true}
           layers={layers}
         >
@@ -196,21 +228,17 @@ function MapGuess() {
           />
         </DeckGL>
       </div>
-      <div className="flex flex-col m-5">
-        <Button
-          type="button"
-          onClick={() => {
-            setViewState({
-              latitude: 50.06168144356519,
-              longitude: 19.937328289497746,
-              zoom: 10.5,
-              transitionDuration: 1000,
-              transitionInterpolator: new FlyToInterpolator(),
-            });
-            setLayers(divisions_layer);
-          }}
-        >
-          Dzielnice
+      <div className="flex flex-col m-5 absolute right-5 top-5">
+        <Text fontSize="xl" fontWeight="bold">
+          {division
+            .split("_")
+            .map((word) => {
+              return word.slice(0, 1).toUpperCase() + word.slice(1);
+            })
+            .join(" ")}
+        </Text>
+        <Button type="button" onClick={enableDivisionsView}>
+          Zmień dzielnicę
         </Button>
         <div className="flex m-3 ">
           <Button
@@ -221,9 +249,6 @@ function MapGuess() {
           >
             {city === "krakow" ? "Zakopane" : "Kraków"}
           </Button>
-          {/* <Button type="button" onClick={getRandomStreet}>
-            Random street
-          </Button> */}
           <Button type="button" onClick={() => cleanCookies()}>
             Zresetuj postępy
           </Button>
@@ -234,6 +259,7 @@ function MapGuess() {
           streets={streets}
           newStreet={getRandomStreet}
           city={city}
+          division={division}
         />
       </div>
     </div>
