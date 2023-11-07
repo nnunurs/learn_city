@@ -57,10 +57,13 @@ function MapGuess() {
     pickable: true,
     filled: true,
     lineWidthMinPixels: 1,
+    lineJointRounded: true,
     getPolygon: (d) => d.geometry.coordinates,
     getFillColor: [199, 149, 80, 50],
     getLineColor: [235, 140, 9],
     getLineWidth: 100,
+    highlightColor: [255, 255, 255, 100],
+    autoHighlight: true,
     onClick: (info) =>
       changeDivision(
         info.object.properties.name.toLowerCase().replace(" ", "_")
@@ -177,6 +180,7 @@ function MapGuess() {
         id: "path-layer",
         data: currentStreet,
         getWidth: 7,
+        lineJointRounded: true,
         getColor: [255, 0, 0],
         widthMinPixels: 7,
       })
@@ -191,8 +195,8 @@ function MapGuess() {
             className="fixed z-10"
             fontSize="2xl"
             style={{
-              left: hovered.x + 30,
-              top: hovered.y + 50,
+              left: hovered.x + 40,
+              top: hovered.y + 70,
               pointerEvents: "none",
             }}
           >
@@ -240,8 +244,9 @@ function MapGuess() {
         <Button type="button" onClick={enableDivisionsView}>
           Zmień dzielnicę
         </Button>
-        <div className="flex m-3 ">
+        <div className="flex my-3 justify-center">
           <Button
+            className="mr-4"
             type="button"
             onClick={() => {
               city === "krakow" ? setCity("zakopane") : setCity("krakow");

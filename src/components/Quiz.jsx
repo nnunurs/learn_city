@@ -109,11 +109,11 @@ function Quiz({ correct, streets, newStreet, city, division }) {
           </p>
         </div>
       ) : (
-        "Zmienianie miasta..."
+        "Zmienianie miasta... Jeśli ta wiadomość się utrzymuje, zresetuj postępy."
       )}
 
       {/* <button onClick={() => newOptions()}>New options</button> */}
-      <div className="flex flex-col m-5">
+      <div className="flex flex-col">
         {options.map((option, i) => {
           return (
             <Button
