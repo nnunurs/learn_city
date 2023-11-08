@@ -88,28 +88,32 @@ function Quiz({ correct, streets, newStreet, city, division }) {
 
   return (
     <div className="flex flex-col">
-      {cookies.score[city][division] ? (
-        <div className="flex flex-col">
-          <p>
-            Poprawne odpowiedzi:{" "}
-            {cookies.score ? cookies.score[city][division].correct : 0}
-          </p>
-          <p>
-            Błędne odpowiedzi:{" "}
-            {cookies.score ? cookies.score[city][division].wrong : 0}
-          </p>
-          <p>
-            Poznane ulice w tej dzielnicy:{" "}
-            {cookies.score
-              ? getPercentage(
-                  cookies.score[city][division].known.length,
-                  Object.keys(streets).length
-                )
-              : "0%"}
-          </p>
-        </div>
+      {cookies.score ? (
+        cookies.score[city][division] ? (
+          <div className="flex flex-col">
+            <p>
+              Poprawne odpowiedzi:{" "}
+              {cookies.score ? cookies.score[city][division].correct : 0}
+            </p>
+            <p>
+              Błędne odpowiedzi:{" "}
+              {cookies.score ? cookies.score[city][division].wrong : 0}
+            </p>
+            <p>
+              Poznane ulice w tej dzielnicy:{" "}
+              {cookies.score
+                ? getPercentage(
+                    cookies.score[city][division].known.length,
+                    Object.keys(streets).length
+                  )
+                : "0%"}
+            </p>
+          </div>
+        ) : (
+          "Zmienianie miasta..."
+        )
       ) : (
-        "Zmienianie miasta..."
+        "Coś nie działa..."
       )}
 
       {/* <button onClick={() => newOptions()}>New options</button> */}
