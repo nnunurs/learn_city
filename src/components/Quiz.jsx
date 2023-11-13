@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import { Button } from "@chakra-ui/react";
+import filterObj from "../scripts/scripts";
 
 const shuffle = (array) => {
   for (let i = array.length - 1; i > 0; i--) {
@@ -33,11 +34,15 @@ function Quiz({ correct, streets, newStreet, city, division }) {
   const [cookies, setCookie] = useCookies(["score"]);
   const [checked, setChecked] = useState(false);
 
-  const newOptions = () => {
+  const newOptions = (availableOptions) => {
     console.log("refreshing options", correct);
 
     setOptions(
-      shuffle([correct, getRandomStreet(streets), getRandomStreet(streets)])
+      shuffle([
+        correct,
+        getRandomStreet(availableOptions),
+        getRandomStreet(availableOptions),
+      ])
     );
   };
 
@@ -81,8 +86,34 @@ function Quiz({ correct, streets, newStreet, city, division }) {
     }, 1000);
   };
 
+  const keywordBasedFilter = (correct, keywords, obj) => {
+    console.log("before filtering", obj);
+    for (let i = 0; i < keywords.length; i++) {
+      if (correct.toLowerCase().includes(keywords[i])) {
+        const filtered = filterObj(
+          obj,
+          (e) =>
+            e[0].name.toLowerCase().includes(keywords[i]) &&
+            e[0].name !== correct
+        );
+        console.log("filtered", filtered);
+        if (Object.keys(filtered).length < 2) {
+          return obj;
+        }
+        return filtered;
+      }
+    }
+    return obj;
+  };
+
   useEffect(() => {
-    newOptions();
+    newOptions(
+      keywordBasedFilter(
+        correct,
+        ["rondo", "skwer", "plac", "bulwar", "aleja", "droga"],
+        streets
+      )
+    );
     console.log(options);
   }, [correct]);
 

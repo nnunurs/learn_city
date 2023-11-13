@@ -21,7 +21,7 @@ import zakopaneStreets from "../data/zakopane_streets.json";
 import krakowWeights from "../data/krakow_weights.json";
 import zakopaneWeights from "../data/zakopane_weights.json";
 
-import weightedRandom from "../scripts/weighted_random";
+import filterObj from "../scripts/scripts";
 import Quiz from "./Quiz";
 
 const center = {
@@ -199,13 +199,6 @@ function MapGuess() {
     );
 
     return distanceConvertToMeters(distance);
-  };
-
-  const filterObj = (obj, predicate) => {
-    const asArray = Object.entries(obj);
-    console.log(asArray);
-    const filtered = asArray.filter(([, value]) => predicate(value));
-    return Object.fromEntries(filtered);
   };
 
   const onSaveRadius = () => {
