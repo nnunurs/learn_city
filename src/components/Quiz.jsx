@@ -6,7 +6,7 @@ import { Button } from "@chakra-ui/react";
 
 const shuffle = (array) => {
   for (let i = array.length - 1; i > 0; i--) {
-    const randomIndex = Math.floor(Math.random() * i);
+    const randomIndex = Math.floor(Math.random() * (i + 1));
 
     [array[i], array[randomIndex]] = [array[randomIndex], array[i]];
   }
@@ -88,26 +88,30 @@ function Quiz({ correct, streets, newStreet, city, division }) {
 
   return (
     <div className="flex flex-col">
-      {cookies.score[city][division] ? (
-        <div className="flex flex-col">
-          <p>
-            Poprawne odpowiedzi:{" "}
-            {cookies.score ? cookies.score[city][division].correct : 0}
-          </p>
-          <p>
-            Błędne odpowiedzi:{" "}
-            {cookies.score ? cookies.score[city][division].wrong : 0}
-          </p>
-          <p>
-            Poznane ulice w tej dzielnicy:{" "}
-            {cookies.score
-              ? getPercentage(
-                  cookies.score[city][division].known.length,
-                  Object.keys(streets).length
-                )
-              : "0%"}
-          </p>
-        </div>
+      {cookies.score ? (
+        cookies.score[city][division] ? (
+          <div className="flex flex-col">
+            <p>
+              Poprawne odpowiedzi:{" "}
+              {cookies.score ? cookies.score[city][division].correct : 0}
+            </p>
+            <p>
+              Błędne odpowiedzi:{" "}
+              {cookies.score ? cookies.score[city][division].wrong : 0}
+            </p>
+            <p>
+              Poznane ulice w tej dzielnicy:{" "}
+              {cookies.score
+                ? getPercentage(
+                    cookies.score[city][division].known.length,
+                    Object.keys(streets).length
+                  )
+                : "0%"}
+            </p>
+          </div>
+        ) : (
+          "Zmienianie miasta..."
+        )
       ) : (
         "Zmienianie miasta... Jeśli ta wiadomość się utrzymuje, zresetuj postępy."
       )}
