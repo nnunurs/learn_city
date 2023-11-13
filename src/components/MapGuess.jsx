@@ -136,15 +136,20 @@ function MapGuess() {
   };
 
   const getRandomStreet = () => {
-    const random_street_key = weightedRandom(
-      Object.keys(weights),
-      Object.values(weights)
-    ).item;
+    // const random_street_key = weightedRandom(
+    //   Object.keys(weights),
+    //   Object.values(weights)
+    // ).item;
+
+    const random_street_key =
+      Object.keys(streets)[
+        Math.floor(Math.random() * Object.keys(streets).length)
+      ];
 
     setCurrentStreet(streets[random_street_key]);
     setVisible(false);
 
-    console.log(streets[random_street_key][0]);
+    console.log(streets[random_street_key]);
   };
 
   const changeRadius = () => {
@@ -152,7 +157,7 @@ function MapGuess() {
       id: "ellipse",
       data: [
         {
-          position: [initialViewState.latitude, initialViewState.longitude],
+          position: [center[city][1], center[city][0]],
           radius: radius,
         },
       ],
@@ -170,11 +175,60 @@ function MapGuess() {
     setLayers(ellipse);
   };
 
+  const pathInPolygon = (path, polygon) => {
+    const [x, y] = path[0];
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const [xi, yi] = polygon[i];
+      const [xj, yj] = polygon[j];
+      const intersect =
+        yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  };
+
+  const distanceConvertToMeters = (distance) => {
+    return distance * 111139;
+  };
+
+  const distanceInMeters = (pointA, pointB) => {
+    const distance = Math.sqrt(
+      Math.pow(Math.abs(pointA[0] - pointB[0]), 2) +
+        Math.pow(Math.abs(pointA[1] - pointB[1]), 2)
+    );
+
+    return distanceConvertToMeters(distance);
+  };
+
+  const filterObj = (obj, predicate) => {
+    const asArray = Object.entries(obj);
+    console.log(asArray);
+    const filtered = asArray.filter(([, value]) => predicate(value));
+    return Object.fromEntries(filtered);
+  };
+
+  const onSaveRadius = () => {
+    setStreets(
+      filterObj(
+        zakopaneStreets,
+        (street) =>
+          distanceInMeters(
+            [street[0].path[0][1], street[0].path[0][0]],
+            center[city]
+          ) <= radius
+      )
+    );
+
+    setRadiusEnabled(false);
+  };
+
   useEffect(() => {
     onStartup();
   }, []);
 
   useEffect(() => {
+    console.log("streets", Object.keys(streets).length, streets);
     getRandomStreet();
   }, [streets]);
 
@@ -322,7 +376,7 @@ function MapGuess() {
             <Button type="button" onClick={() => setRadiusEnabled(false)}>
               Anuluj
             </Button>
-            <Button type="button" onClick={() => setRadiusEnabled(false)}>
+            <Button type="button" onClick={() => onSaveRadius()}>
               Zapisz
             </Button>
           </div>
@@ -336,9 +390,20 @@ function MapGuess() {
                 })
                 .join(" ")}
             </Text>
-            <Button type="button" onClick={enableDivisionsView}>
+            <Button
+              className="mr-4"
+              type="button"
+              onClick={enableDivisionsView}
+            >
               Zmień dzielnicę
             </Button>
+            {city === "krakow" ? (
+              ""
+            ) : (
+              <Button type="button" onClick={() => setRadiusEnabled(true)}>
+                Ustaw promień
+              </Button>
+            )}
             <div className="flex my-3 justify-center">
               <Button
                 className="mr-4"
@@ -351,9 +416,6 @@ function MapGuess() {
               </Button>
               <Button type="button" onClick={() => cleanCookies()}>
                 Zresetuj postępy
-              </Button>
-              <Button type="button" onClick={() => setRadiusEnabled(true)}>
-                Ustaw promień
               </Button>
               {/* <h1>{currentStreet[0].name}</h1> */}
             </div>
