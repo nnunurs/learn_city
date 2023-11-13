@@ -1,10 +1,19 @@
 import { useEffect, useState } from "react";
 import DeckGL, { FlyToInterpolator } from "deck.gl";
 import Map from "react-map-gl";
-import { PathLayer, PolygonLayer } from "@deck.gl/layers";
+import { PathLayer, PolygonLayer, ScatterplotLayer } from "@deck.gl/layers";
 import { useCookies } from "react-cookie";
 
-import { Button, Text, Badge } from "@chakra-ui/react";
+import {
+  Button,
+  Text,
+  Badge,
+  Slider,
+  SliderTrack,
+  SliderFilledTrack,
+  SliderThumb,
+  SliderMark,
+} from "@chakra-ui/react";
 
 import krakowStreets from "../data/krakow_divisions.json";
 import krakowDivisions from "../data/krakow_divisions_filtered.json";
@@ -32,7 +41,10 @@ function MapGuess() {
     ...initialViewState,
   });
   const [hovered, setHovered] = useState();
+  const [isControllerEnabled, setControllerEnabled] = useState(true);
   const [visible, setVisible] = useState(false);
+  const [radius, setRadius] = useState(1000);
+  const [radiusEnabled, setRadiusEnabled] = useState(false);
   const [name, setName] = useState("");
   const [city, setCity] = useState("krakow");
   const [streets, setStreets] = useState(krakowStreets["stare_miasto"]);
@@ -135,6 +147,29 @@ function MapGuess() {
     console.log(streets[random_street_key][0]);
   };
 
+  const changeRadius = () => {
+    const ellipse = new ScatterplotLayer({
+      id: "ellipse",
+      data: [
+        {
+          position: [initialViewState.latitude, initialViewState.longitude],
+          radius: radius,
+        },
+      ],
+      opacity: 0.5,
+      stroked: true,
+      filled: true,
+      radiusScale: 1,
+      radiusMinPixels: 1,
+      lineWidthMinPixels: 1,
+      getPosition: (d) => d.position,
+      getRadius: (d) => d.radius,
+      getFillColor: [255, 0, 0],
+    });
+
+    setLayers(ellipse);
+  };
+
   useEffect(() => {
     onStartup();
   }, []);
@@ -188,6 +223,27 @@ function MapGuess() {
     );
   }, [currentStreet]);
 
+  useEffect(() => {
+    if (radiusEnabled) {
+      changeRadius();
+      setControllerEnabled(false);
+      setViewState({
+        longitude: center[city][1],
+        latitude: center[city][0],
+        zoom: 11.5,
+        transitionDuration: 1000,
+        transitionInterpolator: new FlyToInterpolator(),
+      });
+    } else {
+      getRandomStreet();
+      setControllerEnabled(true);
+    }
+  }, [radiusEnabled]);
+
+  useEffect(() => {
+    changeRadius();
+  }, [radius]);
+
   return (
     <div className="flex h-screen">
       <div className="m-5 justify-center align-center">
@@ -221,7 +277,7 @@ function MapGuess() {
             left: "2%",
             top: "5%",
           }}
-          controller={true}
+          controller={isControllerEnabled}
           layers={layers}
         >
           <Map
@@ -234,39 +290,82 @@ function MapGuess() {
         </DeckGL>
       </div>
       <div className="flex flex-col m-5 absolute right-5 top-5">
-        <Text fontSize="xl" fontWeight="bold">
-          {division
-            .split("_")
-            .map((word) => {
-              return word.slice(0, 1).toUpperCase() + word.slice(1);
-            })
-            .join(" ")}
-        </Text>
-        <Button type="button" onClick={enableDivisionsView}>
-          Zmień dzielnicę
-        </Button>
-        <div className="flex my-3 justify-center">
-          <Button
-            className="mr-4"
-            type="button"
-            onClick={() => {
-              city === "krakow" ? setCity("zakopane") : setCity("krakow");
-            }}
-          >
-            {city === "krakow" ? "Zakopane" : "Kraków"}
-          </Button>
-          <Button type="button" onClick={() => cleanCookies()}>
-            Zresetuj postępy
-          </Button>
-          {/* <h1>{currentStreet[0].name}</h1> */}
-        </div>
-        <Quiz
-          correct={currentStreet[0].name}
-          streets={streets}
-          newStreet={getRandomStreet}
-          city={city}
-          division={division}
-        />
+        {radiusEnabled ? (
+          <div className="">
+            <Text fontSize="xl" fontWeight="bold">
+              Ustaw promień
+            </Text>
+            <Slider
+              className="mt-10"
+              defaultValue={1000}
+              min={500}
+              max={10000}
+              step={200}
+              onChange={(val) => setRadius(val)}
+            >
+              <SliderMark
+                value={radius}
+                textAlign="center"
+                bg="blue.500"
+                color="white"
+                mt="-10"
+                ml="-5"
+                w="15"
+              >
+                {(radius / 1000).toFixed(2)}km
+              </SliderMark>
+              <SliderTrack>
+                <SliderFilledTrack />
+              </SliderTrack>
+              <SliderThumb />
+            </Slider>
+            <Button type="button" onClick={() => setRadiusEnabled(false)}>
+              Anuluj
+            </Button>
+            <Button type="button" onClick={() => setRadiusEnabled(false)}>
+              Zapisz
+            </Button>
+          </div>
+        ) : (
+          <div>
+            <Text fontSize="xl" fontWeight="bold">
+              {division
+                .split("_")
+                .map((word) => {
+                  return word.slice(0, 1).toUpperCase() + word.slice(1);
+                })
+                .join(" ")}
+            </Text>
+            <Button type="button" onClick={enableDivisionsView}>
+              Zmień dzielnicę
+            </Button>
+            <div className="flex my-3 justify-center">
+              <Button
+                className="mr-4"
+                type="button"
+                onClick={() => {
+                  city === "krakow" ? setCity("zakopane") : setCity("krakow");
+                }}
+              >
+                {city === "krakow" ? "Zakopane" : "Kraków"}
+              </Button>
+              <Button type="button" onClick={() => cleanCookies()}>
+                Zresetuj postępy
+              </Button>
+              <Button type="button" onClick={() => setRadiusEnabled(true)}>
+                Ustaw promień
+              </Button>
+              {/* <h1>{currentStreet[0].name}</h1> */}
+            </div>
+            <Quiz
+              correct={currentStreet[0].name}
+              streets={streets}
+              newStreet={getRandomStreet}
+              city={city}
+              division={division}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
