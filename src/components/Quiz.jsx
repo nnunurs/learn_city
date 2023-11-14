@@ -36,14 +36,17 @@ function Quiz({ correct, streets, newStreet, city, division }) {
 
   const newOptions = (availableOptions) => {
     console.log("refreshing options", correct);
-
-    setOptions(
-      shuffle([
-        correct,
-        getRandomStreet(availableOptions),
-        getRandomStreet(availableOptions),
-      ])
+    const option1 = getRandomStreet(
+      filterObj(availableOptions, (e) => e[0].name !== correct)
     );
+    const option2 = getRandomStreet(
+      filterObj(
+        availableOptions,
+        (e) => e[0].name !== correct && e[0].name !== option1
+      )
+    );
+
+    setOptions(shuffle([correct, option1, option2]));
   };
 
   const checkAnswer = (option) => {

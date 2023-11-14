@@ -43,6 +43,7 @@ function MapGuess() {
   const [hovered, setHovered] = useState();
   const [isControllerEnabled, setControllerEnabled] = useState(true);
   const [visible, setVisible] = useState(false);
+  const [quizEnabled, setQuizEnabled] = useState(true);
   const [radius, setRadius] = useState(1000);
   const [radiusEnabled, setRadiusEnabled] = useState(false);
   const [name, setName] = useState("");
@@ -63,7 +64,7 @@ function MapGuess() {
     })
   );
 
-  const divisions_layer = new PolygonLayer({
+  const divisionsLayer = new PolygonLayer({
     id: "divisions-layer",
     data: krakowDivisions.features,
     pickable: true,
@@ -132,7 +133,7 @@ function MapGuess() {
       transitionDuration: 1000,
       transitionInterpolator: new FlyToInterpolator(),
     });
-    setLayers(divisions_layer);
+    setLayers(divisionsLayer);
   };
 
   const getRandomStreet = () => {
@@ -161,15 +162,16 @@ function MapGuess() {
           radius: radius,
         },
       ],
-      opacity: 0.5,
       stroked: true,
       filled: true,
       radiusScale: 1,
       radiusMinPixels: 1,
       lineWidthMinPixels: 1,
+      getLineWidth: 100,
       getPosition: (d) => d.position,
       getRadius: (d) => d.radius,
-      getFillColor: [255, 0, 0],
+      getFillColor: [255, 0, 0, 100],
+      getLineColor: [255, 0, 0, 255],
     });
 
     setLayers(ellipse);
@@ -216,9 +218,19 @@ function MapGuess() {
     setRadiusEnabled(false);
   };
 
+  const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+
   useEffect(() => {
     onStartup();
   }, []);
+
+  useEffect(() => {
+    if (layers === divisionsLayer) {
+      setQuizEnabled(false);
+    } else {
+      setQuizEnabled(true);
+    }
+  }, [layers]);
 
   useEffect(() => {
     console.log("streets", Object.keys(streets).length, streets);
@@ -289,6 +301,11 @@ function MapGuess() {
 
   useEffect(() => {
     changeRadius();
+    // console.log(clamp(15 - radius / 1000, 11, 15));
+    setViewState({
+      ...viewState,
+      zoom: clamp(15 - radius / 1000, 10.5, 15),
+    });
   }, [radius]);
 
   return (
@@ -338,16 +355,16 @@ function MapGuess() {
       </div>
       <div className="flex flex-col m-5 absolute right-5 top-5">
         {radiusEnabled ? (
-          <div className="">
+          <div className="flex flex-col justify-center align-center">
             <Text fontSize="xl" fontWeight="bold">
               Ustaw promień
             </Text>
             <Slider
               className="mt-10"
-              defaultValue={1000}
+              defaultValue={radius}
               min={500}
-              max={10000}
-              step={200}
+              max={8000}
+              step={50}
               onChange={(val) => setRadius(val)}
             >
               <SliderMark
@@ -366,10 +383,18 @@ function MapGuess() {
               </SliderTrack>
               <SliderThumb />
             </Slider>
-            <Button type="button" onClick={() => setRadiusEnabled(false)}>
+            <Button
+              className="mt-3"
+              type="button"
+              onClick={() => setRadiusEnabled(false)}
+            >
               Anuluj
             </Button>
-            <Button type="button" onClick={() => onSaveRadius()}>
+            <Button
+              className="mt-3"
+              type="button"
+              onClick={() => onSaveRadius()}
+            >
               Zapisz
             </Button>
           </div>
@@ -412,13 +437,17 @@ function MapGuess() {
               </Button>
               {/* <h1>{currentStreet[0].name}</h1> */}
             </div>
-            <Quiz
-              correct={currentStreet[0].name}
-              streets={streets}
-              newStreet={getRandomStreet}
-              city={city}
-              division={division}
-            />
+            {quizEnabled ? (
+              <Quiz
+                correct={currentStreet[0].name}
+                streets={streets}
+                newStreet={getRandomStreet}
+                city={city}
+                division={division}
+              />
+            ) : (
+              ""
+            )}
           </div>
         )}
       </div>
