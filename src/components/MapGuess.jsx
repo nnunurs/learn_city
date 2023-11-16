@@ -18,11 +18,10 @@ import {
 import krakowStreets from "../data/krakow_divisions.json";
 import krakowDivisions from "../data/krakow_divisions_filtered.json";
 import zakopaneStreets from "../data/zakopane_streets.json";
-import krakowWeights from "../data/krakow_weights.json";
-import zakopaneWeights from "../data/zakopane_weights.json";
 
 import filterObj from "../scripts/scripts";
 import Quiz from "./Quiz";
+import { Login } from "./Login";
 
 const center = {
   krakow: [50.06168144356519, 19.937328289497746],
@@ -50,7 +49,6 @@ function MapGuess() {
   const [city, setCity] = useState("krakow");
   const [streets, setStreets] = useState(krakowStreets["stare_miasto"]);
   const [division, setDivision] = useState("stare_miasto");
-  const [weights, setWeights] = useState(krakowWeights["stare_miasto"]);
   const [currentStreet, setCurrentStreet] = useState([
     { name: "loading", path: [[0, 0]] },
   ]);
@@ -97,7 +95,6 @@ function MapGuess() {
     } else {
       setDivision(div);
       setStreets(krakowStreets[div]);
-      setWeights(krakowWeights[div]);
     }
     // getRandomStreet();
   };
@@ -241,14 +238,11 @@ function MapGuess() {
     switch (city) {
       case "krakow":
         setDivision("stare_miasto");
-        // setStreets(krakowStreets[division]);
-        // setWeights(krakowWeights[division]);
         enableDivisionsView();
         break;
       case "zakopane":
         setDivision("zakopane");
         setStreets(zakopaneStreets);
-        setWeights(zakopaneWeights);
     }
 
     if (division === undefined) {
@@ -301,7 +295,6 @@ function MapGuess() {
 
   useEffect(() => {
     changeRadius();
-    // console.log(clamp(15 - radius / 1000, 11, 15));
     setViewState({
       ...viewState,
       zoom: clamp(15 - radius / 1000, 10.5, 15),
@@ -408,13 +401,17 @@ function MapGuess() {
                 })
                 .join(" ")}
             </Text>
-            <Button
-              className="mr-4"
-              type="button"
-              onClick={enableDivisionsView}
-            >
-              Zmień dzielnicę
-            </Button>
+            <div className="flex">
+              <Button
+                className="mr-4"
+                type="button"
+                onClick={enableDivisionsView}
+              >
+                Zmień dzielnicę
+              </Button>
+              <Login />
+            </div>
+
             {city === "krakow" ? (
               ""
             ) : (
