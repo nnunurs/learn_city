@@ -24,7 +24,14 @@ import {
   signInWithPopup,
   signOut,
 } from "firebase/auth";
-import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  getDocFromCache,
+} from "firebase/firestore";
 
 export const Login = () => {
   const [email, setEmail] = useState("");
@@ -36,6 +43,10 @@ export const Login = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const btnRef = useRef();
 
+  const defaultUser = (uid, nick, email, photoURL, provider) => {
+    return { uid, nick, email, photoURL, provider };
+  };
+
   const handleSignIn = async () => {
     try {
       const userCredential = await createUserWithEmailAndPassword(
@@ -45,12 +56,9 @@ export const Login = () => {
       );
       const user = userCredential.user;
       await addDoc(collection(db, "users"), {
-        uid: user.uid,
-        nick: nick,
-        email: user.email,
-        photoURL: user.photoURL,
-        authProvider: "local",
+        ...defaultUser(user.uid, nick, user.email, user.photoURL, "local"),
       });
+      db.collection("users").doc("user.uid").collection("streets").add({});
 
       setUser(userCredential.user);
       console.log(user);
@@ -81,13 +89,18 @@ export const Login = () => {
       const q = query(collection(db, "users"), where("uid", "==", user.uid));
       const querySnapshot = await getDocs(q);
       if (querySnapshot.empty) {
-        await addDoc(collection(db, "users"), {
-          uid: user.uid,
-          nick: user.displayName,
-          email: user.email,
-          photoURL: user.photoURL,
-          authProvider: "google",
+        const userDoc = await addDoc(collection(db, "users"), {
+          ...defaultUser(
+            user.uid,
+            user.displayName,
+            user.email,
+            user.photoURL,
+            "google"
+          ),
         });
+
+        const streets = collection(db, "users", userDoc.id, "streets");
+        await addDoc(streets, {});
       }
 
       setUser(userCredential.user);
@@ -104,7 +117,7 @@ export const Login = () => {
     } catch (error) {
       console.error(error);
     }
-  }
+  };
 
   return (
     <div>
