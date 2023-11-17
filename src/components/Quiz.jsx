@@ -5,6 +5,17 @@ import { useCookies } from "react-cookie";
 import { Button } from "@chakra-ui/react";
 import filterObj from "../scripts/scripts";
 
+import { db } from "../config/firebase";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  onSnapshot,
+  query,
+  where,
+} from "firebase/firestore";
+
 const shuffle = (array) => {
   for (let i = array.length - 1; i > 0; i--) {
     const randomIndex = Math.floor(Math.random() * (i + 1));
@@ -28,9 +39,14 @@ const getRandomStreet = (streets) => {
   return streets[random_street_key][0].name;
 };
 
-function Quiz({ correct, streets, newStreet, city, division }) {
+const Quiz = ({ correct, streets, newStreet, city, division, userRef, setLayers }) => {
   const [options, setOptions] = useState(["option1", "option2", "option3"]);
-  // const [score, setScore] = useState({ correct: 0, wrong: 0 });
+  const [stats, setStats] = useState({
+    wellKnown: 0,
+    known: 0,
+    almostKnown: 0,
+    unknown: 0,
+  });
   const [cookies, setCookie] = useCookies(["score"]);
   const [checked, setChecked] = useState(false);
 
@@ -49,9 +65,13 @@ function Quiz({ correct, streets, newStreet, city, division }) {
     setOptions(shuffle([correct, option1, option2]));
   };
 
-  const checkAnswer = (option) => {
+  const checkAnswer = async (option) => {
+    const streetsRef = collection(db, "users", userRef, "streets");
+    console.log("ref", userRef);
+    const q = query(streetsRef, where("name", "==", correct));
+    const querySnapshot = await getDocs(q);
+
     if (option === correct) {
-      // setScore({ ...score, correct: score.correct + 1 });
       setCookie("score", {
         ...cookies.score,
         [city]: {
@@ -63,9 +83,20 @@ function Quiz({ correct, streets, newStreet, city, division }) {
           },
         },
       });
+
+      if (querySnapshot.empty) {
+        await addDoc(streetsRef, {
+          name: correct,
+          division: division,
+          count: 1,
+        });
+      } else {
+        querySnapshot.forEach(async (doc) => {
+          await updateDoc(doc.ref, { count: doc.data().count + 1 });
+        });
+      }
       console.log("correct");
     } else {
-      // setScore({ ...score, wrong: score.wrong + 1 });
       setCookie("score", {
         ...cookies.score,
         [city]: {
@@ -77,10 +108,20 @@ function Quiz({ correct, streets, newStreet, city, division }) {
           },
         },
       });
+
+      if (querySnapshot.empty) {
+        await addDoc(streetsRef, {
+          name: correct,
+          division: division,
+          count: -1,
+        });
+      } else {
+        querySnapshot.forEach(async (doc) => {
+          await updateDoc(doc.ref, { count: doc.data().count - 1 });
+        });
+      }
       console.log("wrong");
     }
-
-    // console.log(cookies.score[city].known.length, cookies.score[city].wrong);
 
     setChecked(true);
     setTimeout(() => {
@@ -120,34 +161,97 @@ function Quiz({ correct, streets, newStreet, city, division }) {
     console.log(options);
   }, [correct]);
 
+  useEffect(() => {
+    const q = query(
+      collection(db, "users", userRef, "streets"),
+      where("division", "==", division)
+    );
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      let tempStats = { wellKnown: 0, known: 0, almostKnown: 0, unknown: 0 };
+      querySnapshot.forEach((doc) => {
+        console.log(doc.data());
+
+        switch (true) {
+          case doc.data().count > 2:
+            console.log("well known");
+            tempStats = {
+              ...tempStats,
+              wellKnown: tempStats.wellKnown + 1,
+            };
+            break;
+          case doc.data().count === 2:
+            console.log("known");
+            tempStats = {
+              ...tempStats,
+              known: tempStats.known + 1,
+            };
+            break;
+          case doc.data().count === 1:
+            console.log("almost known");
+            tempStats = {
+              ...tempStats,
+              almostKnown: tempStats.almostKnown + 1,
+            };
+            break;
+          case doc.data().count < 1:
+            console.log("unknown");
+            tempStats = {
+              ...tempStats,
+              unknown: tempStats.unknown + 1,
+            };
+            break;
+        }
+      });
+      console.log(tempStats);
+      setStats(tempStats);
+    });
+    return () => unsubscribe();
+  }, [division, userRef]);
+
+  useEffect(() => {
+    console.log(stats);
+  }, [stats]);
+
   return (
     <div className="flex flex-col">
-      {cookies.score ? (
-        cookies.score[city][division] ? (
-          <div className="flex flex-col">
-            <p>
-              Poprawne odpowiedzi:{" "}
-              {cookies.score ? cookies.score[city][division].correct : 0}
-            </p>
-            <p>
-              Błędne odpowiedzi:{" "}
-              {cookies.score ? cookies.score[city][division].wrong : 0}
-            </p>
-            <p>
-              Poznane ulice w tej dzielnicy:{" "}
-              {cookies.score
-                ? getPercentage(
-                    cookies.score[city][division].known.length,
-                    Object.keys(streets).length
-                  )
-                : "0%"}
-            </p>
-          </div>
-        ) : (
-          "Zmienianie miasta..."
-        )
+      {userRef ? (
+        <div>
+          <p>Dobrze znam: {stats.wellKnown}</p>
+          <p>Znam: {stats.known}</p>
+          <p>Jeszcze się uczę: {stats.almostKnown}</p>
+          <p>Nie znam: {stats.unknown}</p>
+        </div>
       ) : (
-        "Zmienianie miasta... Jeśli ta wiadomość się utrzymuje, zresetuj postępy."
+        <div>
+          {cookies.score ? (
+            cookies.score[city][division] ? (
+              <div className="flex flex-col">
+                <p>
+                  Poprawne odpowiedzi:{" "}
+                  {cookies.score ? cookies.score[city][division].correct : 0}
+                </p>
+                <p>
+                  Błędne odpowiedzi:{" "}
+                  {cookies.score ? cookies.score[city][division].wrong : 0}
+                </p>
+                <p>
+                  Poznane ulice w tej dzielnicy:{" "}
+                  {cookies.score
+                    ? getPercentage(
+                        cookies.score[city][division].known.length,
+                        Object.keys(streets).length
+                      )
+                    : "0%"}
+                </p>
+              </div>
+            ) : (
+              "Zmienianie miasta..."
+            )
+          ) : (
+            "Zmienianie miasta... Jeśli ta wiadomość się utrzymuje, zresetuj postępy."
+          )}
+        </div>
       )}
 
       {/* <button onClick={() => newOptions()}>New options</button> */}
@@ -174,6 +278,6 @@ function Quiz({ correct, streets, newStreet, city, division }) {
       </div>
     </div>
   );
-}
+};
 
 export default Quiz;

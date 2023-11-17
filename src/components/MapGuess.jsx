@@ -36,6 +36,7 @@ const initialViewState = {
 };
 
 function MapGuess() {
+  const [userRef, setUserRef] = useState("abc");
   const [viewState, setViewState] = useState({
     ...initialViewState,
   });
@@ -409,7 +410,7 @@ function MapGuess() {
               >
                 Zmień dzielnicę
               </Button>
-              <Login />
+              <Login setUserRef={setUserRef} />
             </div>
 
             {city === "krakow" ? (
@@ -434,6 +435,9 @@ function MapGuess() {
               </Button>
               {/* <h1>{currentStreet[0].name}</h1> */}
             </div>
+            {userRef
+              ? ""
+              : "Zaloguj się aby zapisywać postępy"}
             {quizEnabled ? (
               <Quiz
                 correct={currentStreet[0].name}
@@ -441,6 +445,8 @@ function MapGuess() {
                 newStreet={getRandomStreet}
                 city={city}
                 division={division}
+                userRef={userRef}
+                setLayers={setLayers}
               />
             ) : (
               ""

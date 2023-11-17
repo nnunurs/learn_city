@@ -1,14 +1,13 @@
 import json
 import math
 
-# how to get data
-# 1.    get area code of the city with area[name="{city_name}"]
-# 2.
-# area({area_code});
-# rel(area)["boundary"="administrative"];
-# out geom;
-# 3. find relation id with the above code
-# 4. find city outline with rel({relation_if})
+'''how to get data
+1.    get area code of the city with area[name="{city_name}"]
+2.      area({area_code});
+        rel(area)["boundary"="administrative"];
+        out geom;
+3. find relation id with the above code
+4. find city outline with rel({relation_if})'''
 
 global center
 center = {
@@ -44,7 +43,7 @@ def is_inside(verts, test):
     return c
 
 
-def get_boundry_polygon():
+def get_boundary_polygon():
     with open(f"{city}_boundary.geojson") as boundry_file:
         return [
             coord[::-1]
@@ -55,7 +54,7 @@ def get_boundry_polygon():
 
 
 def process_data(city):
-    boundry_polygon = get_boundry_polygon()
+    boundary_polygon = get_boundary_polygon()
 
     with open(f"{city}_in_streets.geojson") as file:
         data = json.load(file)["features"]
@@ -66,7 +65,7 @@ def process_data(city):
             name = street["properties"]["name"]
             points = [coord[::-1] for coord in street["geometry"]["coordinates"]]
             if name != None and not is_bridge(street):
-                if is_inside(boundry_polygon, points[0]):
+                if is_inside(boundary_polygon, points[0]):
                     dist = get_distance(
                         center[city],
                         [float(x) for x in points[0]],
@@ -97,23 +96,23 @@ def generate_weights(city):
         data = json.load(file)["features"]
 
         max_dist = 0
-        boundry_polygon = get_boundry_polygon()
+        boundary_polygon = get_boundary_polygon()
 
         for street in data:
             name = street["properties"]["name"]
             points = [coord[::-1] for coord in street["geometry"]["coordinates"]]
 
             if name != None and not is_bridge(street):
-                if is_inside(boundry_polygon, points[0]):
+                if is_inside(boundary_polygon, points[0]):
                     dist = get_distance(
                         center[city],
                         [float(x) for x in points[0]],
                     )
                     max_dist = max(dist, max_dist)
                 else:
-                    print("street not in boundry")
+                    print("street not in boundary")
 
-    penalty = float(input("wpisz wspolczynnik kary\n"))
+    penalty = float(input("wpisz współczynnik kary\n"))
     weights = {}
 
     with open(f"{city}_divisions.json") as div_file:

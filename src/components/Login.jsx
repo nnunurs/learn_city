@@ -33,7 +33,7 @@ import {
   getDocFromCache,
 } from "firebase/firestore";
 
-export const Login = () => {
+export const Login = ({ setUserRef }) => {
   const [email, setEmail] = useState("");
   const [nick, setNick] = useState("");
   const [password, setPassword] = useState("");
@@ -55,13 +55,12 @@ export const Login = () => {
         password
       );
       const user = userCredential.user;
-      await addDoc(collection(db, "users"), {
+      const userDoc = await addDoc(collection(db, "users"), {
         ...defaultUser(user.uid, nick, user.email, user.photoURL, "local"),
       });
-      db.collection("users").doc("user.uid").collection("streets").add({});
+      setUserRef(userDoc.id);
 
       setUser(userCredential.user);
-      console.log(user);
     } catch (error) {
       console.error(error);
     }
@@ -74,9 +73,14 @@ export const Login = () => {
         email,
         password
       );
+      const q = query(
+        collection(db, "users"),
+        where("uid", "==", userCredential.user.uid)
+      );
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach((doc) => setUserRef(doc.id));
 
       setUser(userCredential.user);
-      console.log(user);
     } catch (error) {
       console.error(error);
     }
@@ -89,7 +93,7 @@ export const Login = () => {
       const q = query(collection(db, "users"), where("uid", "==", user.uid));
       const querySnapshot = await getDocs(q);
       if (querySnapshot.empty) {
-        const userDoc = await addDoc(collection(db, "users"), {
+        await addDoc(collection(db, "users"), {
           ...defaultUser(
             user.uid,
             user.displayName,
@@ -98,13 +102,10 @@ export const Login = () => {
             "google"
           ),
         });
-
-        const streets = collection(db, "users", userDoc.id, "streets");
-        await addDoc(streets, {});
       }
+      querySnapshot.forEach((doc) => setUserRef(doc.id));
 
       setUser(userCredential.user);
-      console.log(user);
     } catch (error) {
       console.error(error);
     }
@@ -114,6 +115,7 @@ export const Login = () => {
     try {
       await signOut(auth);
       setUser(null);
+      setUserRef(null);
     } catch (error) {
       console.error(error);
     }
