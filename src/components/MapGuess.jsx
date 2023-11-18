@@ -50,6 +50,7 @@ function MapGuess() {
   const [city, setCity] = useState("krakow");
   const [streets, setStreets] = useState(krakowStreets["stare_miasto"]);
   const [division, setDivision] = useState("stare_miasto");
+  const [streetsToDraw, setStreetsToDraw] = useState([]);
   const [currentStreet, setCurrentStreet] = useState([
     { name: "loading", path: [[0, 0]] },
   ]);
@@ -97,7 +98,6 @@ function MapGuess() {
       setDivision(div);
       setStreets(krakowStreets[div]);
     }
-    // getRandomStreet();
   };
 
   const [cookies, setCookie] = useCookies(["score"]);
@@ -135,11 +135,6 @@ function MapGuess() {
   };
 
   const getRandomStreet = () => {
-    // const random_street_key = weightedRandom(
-    //   Object.keys(weights),
-    //   Object.values(weights)
-    // ).item;
-
     const random_street_key =
       Object.keys(streets)[
         Math.floor(Math.random() * Object.keys(streets).length)
@@ -173,19 +168,6 @@ function MapGuess() {
     });
 
     setLayers(ellipse);
-  };
-
-  const pathInPolygon = (path, polygon) => {
-    const [x, y] = path[0];
-    let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const [xi, yi] = polygon[i];
-      const [xj, yj] = polygon[j];
-      const intersect =
-        yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
-      if (intersect) inside = !inside;
-    }
-    return inside;
   };
 
   const distanceConvertToMeters = (distance) => {
@@ -256,6 +238,7 @@ function MapGuess() {
   }, [city]);
 
   useEffect(() => {
+    // console.log("to draw", [...currentStreet, ...streetsToDraw]);
     setViewState({
       longitude: currentStreet[0].path[0][0],
       latitude: currentStreet[0].path[0][1],
@@ -267,15 +250,37 @@ function MapGuess() {
     setLayers(
       new PathLayer({
         id: "path-layer",
-        data: currentStreet,
+        data: [
+          ...currentStreet.map((e) => ({ ...e, color: "selected" })),
+          ...streetsToDraw.map((e) =>
+            e.name === currentStreet[0].name ? { ...e, color: "selected" } : e
+          ),
+        ],
         getWidth: 7,
         capRounded: true,
         jointRounded: true,
-        getColor: [79, 100, 255],
+        getColor: (d) => getColor(d.color),
         widthMinPixels: 3,
       })
     );
   }, [currentStreet]);
+
+  const getColor = (color) => {
+    switch (color) {
+      case "selected":
+        return [205, 39, 217];
+      case "darkgreen":
+        return [51, 114, 120];
+      case "green":
+        return [64, 160, 115];
+      case "red":
+        return [214, 60, 69];
+      case "yellow":
+        return [255, 148, 38];
+      default:
+        return [79, 100, 255];
+    }
+  };
 
   useEffect(() => {
     if (radiusEnabled) {
@@ -433,11 +438,8 @@ function MapGuess() {
               <Button type="button" onClick={() => cleanCookies()}>
                 Zresetuj postępy
               </Button>
-              {/* <h1>{currentStreet[0].name}</h1> */}
             </div>
-            {userRef
-              ? ""
-              : "Zaloguj się aby zapisywać postępy"}
+            {userRef ? "" : "Zaloguj się aby zapisywać postępy"}
             {quizEnabled ? (
               <Quiz
                 correct={currentStreet[0].name}
@@ -446,7 +448,8 @@ function MapGuess() {
                 city={city}
                 division={division}
                 userRef={userRef}
-                setLayers={setLayers}
+                streetsToDraw={streetsToDraw}
+                setStreetsToDraw={setStreetsToDraw}
               />
             ) : (
               ""

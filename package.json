@@ -7,9 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "theme": "chakra-cli tokens src/theme/theme.ts",
+    "theme:watch": "chakra-cli tokens src/theme/theme.ts --watch"
   },
   "dependencies": {
+    "@chakra-ui/cli": "^2.4.1",
     "@chakra-ui/icons": "^2.1.1",
     "@chakra-ui/react": "^2.8.1",
     "@emotion/react": "^11.11.1",

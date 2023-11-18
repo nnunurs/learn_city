@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
-import { Button } from "@chakra-ui/react";
+import { Button, Tag } from "@chakra-ui/react";
 import filterObj from "../scripts/scripts";
 
 import { db } from "../config/firebase";
@@ -39,7 +39,16 @@ const getRandomStreet = (streets) => {
   return streets[random_street_key][0].name;
 };
 
-const Quiz = ({ correct, streets, newStreet, city, division, userRef, setLayers }) => {
+const Quiz = ({
+  correct,
+  streets,
+  newStreet,
+  city,
+  division,
+  userRef,
+  streetsToDraw,
+  setStreetsToDraw,
+}) => {
   const [options, setOptions] = useState(["option1", "option2", "option3"]);
   const [stats, setStats] = useState({
     wellKnown: 0,
@@ -169,6 +178,7 @@ const Quiz = ({ correct, streets, newStreet, city, division, userRef, setLayers 
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       let tempStats = { wellKnown: 0, known: 0, almostKnown: 0, unknown: 0 };
+      let tempStreetsToDraw = [];
       querySnapshot.forEach((doc) => {
         console.log(doc.data());
 
@@ -179,6 +189,13 @@ const Quiz = ({ correct, streets, newStreet, city, division, userRef, setLayers 
               ...tempStats,
               wellKnown: tempStats.wellKnown + 1,
             };
+            tempStreetsToDraw = [
+              ...tempStreetsToDraw,
+              ...streets[doc.data().name].map((e) => ({
+                ...e,
+                color: "darkgreen",
+              })),
+            ];
             break;
           case doc.data().count === 2:
             console.log("known");
@@ -186,6 +203,13 @@ const Quiz = ({ correct, streets, newStreet, city, division, userRef, setLayers 
               ...tempStats,
               known: tempStats.known + 1,
             };
+            tempStreetsToDraw = [
+              ...tempStreetsToDraw,
+              ...streets[doc.data().name].map((e) => ({
+                ...e,
+                color: "green",
+              })),
+            ];
             break;
           case doc.data().count === 1:
             console.log("almost known");
@@ -193,6 +217,13 @@ const Quiz = ({ correct, streets, newStreet, city, division, userRef, setLayers 
               ...tempStats,
               almostKnown: tempStats.almostKnown + 1,
             };
+            tempStreetsToDraw = [
+              ...tempStreetsToDraw,
+              ...streets[doc.data().name].map((e) => ({
+                ...e,
+                color: "yellow",
+              })),
+            ];
             break;
           case doc.data().count < 1:
             console.log("unknown");
@@ -200,11 +231,16 @@ const Quiz = ({ correct, streets, newStreet, city, division, userRef, setLayers 
               ...tempStats,
               unknown: tempStats.unknown + 1,
             };
+            tempStreetsToDraw = [
+              ...tempStreetsToDraw,
+              ...streets[doc.data().name].map((e) => ({ ...e, color: "red" })),
+            ];
             break;
         }
       });
       console.log(tempStats);
       setStats(tempStats);
+      setStreetsToDraw(tempStreetsToDraw);
     });
     return () => unsubscribe();
   }, [division, userRef]);
@@ -216,11 +252,15 @@ const Quiz = ({ correct, streets, newStreet, city, division, userRef, setLayers 
   return (
     <div className="flex flex-col">
       {userRef ? (
-        <div>
-          <p>Dobrze znam: {stats.wellKnown}</p>
-          <p>Znam: {stats.known}</p>
-          <p>Jeszcze się uczę: {stats.almostKnown}</p>
-          <p>Nie znam: {stats.unknown}</p>
+        <div className="flex flex-col gap-3">
+          <Tag size="lg" colorScheme="teal">
+            Dobrze znam: {stats.wellKnown}
+          </Tag>
+          <Tag size="lg" colorScheme="green">
+            Znam: {stats.known}
+          </Tag>
+          <Tag size="lg" colorScheme="orange">Jeszcze się uczę: {stats.almostKnown}</Tag>
+          <Tag size="lg" colorScheme="red">Nie znam: {stats.unknown}</Tag>
         </div>
       ) : (
         <div>
