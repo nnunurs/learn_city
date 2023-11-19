@@ -19,7 +19,12 @@ import krakowStreets from "../data/krakow_divisions.json";
 import krakowDivisions from "../data/krakow_divisions_filtered.json";
 import zakopaneStreets from "../data/zakopane_streets.json";
 
-import filterObj from "../scripts/scripts";
+import {
+  filterObj,
+  clamp,
+  weightedRandom,
+  findIndexByName,
+} from "../scripts/scripts";
 import Quiz from "./Quiz";
 import { Login } from "./Login";
 
@@ -36,7 +41,7 @@ const initialViewState = {
 };
 
 function MapGuess() {
-  const [userRef, setUserRef] = useState("abc");
+  const [userRef, setUserRef] = useState();
   const [viewState, setViewState] = useState({
     ...initialViewState,
   });
@@ -135,10 +140,26 @@ function MapGuess() {
   };
 
   const getRandomStreet = () => {
-    const random_street_key =
-      Object.keys(streets)[
-        Math.floor(Math.random() * Object.keys(streets).length)
-      ];
+    const random_street_key = weightedRandom(Object.keys(streets), [
+      ...Object.keys(streets).map((e) => {
+        if (streetsToDraw.map((e) => e.name).includes(e)) {
+          switch (streetsToDraw[findIndexByName(streetsToDraw, e)].color) {
+            case "darkgreen":
+              return 0.05;
+            case "green":
+              return 0.3;
+            case "yellow":
+              return 0.4;
+            case "red":
+              return 0.8;
+            default:
+              return 1.5;
+          }
+        } else {
+          return 1;
+        }
+      }),
+    ]).item;
 
     setCurrentStreet(streets[random_street_key]);
     setVisible(false);
@@ -198,8 +219,6 @@ function MapGuess() {
     setRadiusEnabled(false);
   };
 
-  const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
-
   useEffect(() => {
     onStartup();
   }, []);
@@ -238,7 +257,6 @@ function MapGuess() {
   }, [city]);
 
   useEffect(() => {
-    // console.log("to draw", [...currentStreet, ...streetsToDraw]);
     setViewState({
       longitude: currentStreet[0].path[0][0],
       latitude: currentStreet[0].path[0][1],
@@ -256,14 +274,14 @@ function MapGuess() {
             e.name === currentStreet[0].name ? { ...e, color: "selected" } : e
           ),
         ],
-        getWidth: 7,
+        getWidth: (d) => (d.color === "selected" ? 7 : 4),
         capRounded: true,
         jointRounded: true,
         getColor: (d) => getColor(d.color),
         widthMinPixels: 3,
       })
     );
-  }, [currentStreet]);
+  }, [currentStreet, streetsToDraw]);
 
   const getColor = (color) => {
     switch (color) {
@@ -399,6 +417,7 @@ function MapGuess() {
           </div>
         ) : (
           <div>
+            {userRef}
             <Text fontSize="xl" fontWeight="bold">
               {division
                 .split("_")
@@ -418,9 +437,7 @@ function MapGuess() {
               <Login setUserRef={setUserRef} />
             </div>
 
-            {city === "krakow" ? (
-              ""
-            ) : (
+            {city !== "krakow" && (
               <Button type="button" onClick={() => setRadiusEnabled(true)}>
                 Ustaw promień
               </Button>
@@ -439,8 +456,8 @@ function MapGuess() {
                 Zresetuj postępy
               </Button>
             </div>
-            {userRef ? "" : "Zaloguj się aby zapisywać postępy"}
-            {quizEnabled ? (
+            {!userRef && "Zaloguj się aby zapisywać postępy"}
+            {quizEnabled && (
               <Quiz
                 correct={currentStreet[0].name}
                 streets={streets}
@@ -451,8 +468,6 @@ function MapGuess() {
                 streetsToDraw={streetsToDraw}
                 setStreetsToDraw={setStreetsToDraw}
               />
-            ) : (
-              ""
             )}
           </div>
         )}

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import { Button, Tag } from "@chakra-ui/react";
-import filterObj from "../scripts/scripts";
+import { filterObj, findIndexByName } from "../scripts/scripts";
 
 import { db } from "../config/firebase";
 import {
@@ -14,6 +14,7 @@ import {
   onSnapshot,
   query,
   where,
+  and,
 } from "firebase/firestore";
 
 const shuffle = (array) => {
@@ -58,6 +59,9 @@ const Quiz = ({
   });
   const [cookies, setCookie] = useCookies(["score"]);
   const [checked, setChecked] = useState(false);
+  const [caption, setCaption] = useState(
+    "Ta ulica jeszcze nie była przez ciebie zgadywana"
+  );
 
   const newOptions = (availableOptions) => {
     console.log("refreshing options", correct);
@@ -77,7 +81,10 @@ const Quiz = ({
   const checkAnswer = async (option) => {
     const streetsRef = collection(db, "users", userRef, "streets");
     console.log("ref", userRef);
-    const q = query(streetsRef, where("name", "==", correct));
+    const q = query(
+      streetsRef,
+      and(where("name", "==", correct), where("division", "==", division))
+    );
     const querySnapshot = await getDocs(q);
 
     if (option === correct) {
@@ -101,7 +108,9 @@ const Quiz = ({
         });
       } else {
         querySnapshot.forEach(async (doc) => {
-          await updateDoc(doc.ref, { count: doc.data().count + 1 });
+          await updateDoc(doc.ref, {
+            count: doc.data().count === -1 ? 1 : doc.data().count + 1,
+          });
         });
       }
       console.log("correct");
@@ -126,7 +135,9 @@ const Quiz = ({
         });
       } else {
         querySnapshot.forEach(async (doc) => {
-          await updateDoc(doc.ref, { count: doc.data().count - 1 });
+          await updateDoc(doc.ref, {
+            count: doc.data().count === 1 ? -1 : doc.data().count - 1,
+          });
         });
       }
       console.log("wrong");
@@ -160,6 +171,18 @@ const Quiz = ({
   };
 
   useEffect(() => {
+    if (streetsToDraw.map((e) => e.name).includes(correct)) {
+      const count =
+        streetsToDraw[findIndexByName(streetsToDraw, correct)].count;
+      const tempCaption =
+        count > 0
+          ? `Poprawne odpowiedzi: ${count}`
+          : `Niepoprawne odpowiedzi: ${count * -1}`;
+      setCaption(tempCaption);
+    } else {
+      setCaption("Ta ulica jeszcze nie była przez ciebie zgadywana");
+    }
+
     newOptions(
       keywordBasedFilter(
         correct,
@@ -168,81 +191,95 @@ const Quiz = ({
       )
     );
     console.log(options);
-  }, [correct]);
+  }, [correct, division]);
+
+  const getStreetsToDraw = (querySnapshot) => {
+    let tempStats = { wellKnown: 0, known: 0, almostKnown: 0, unknown: 0 };
+    let tempStreetsToDraw = [];
+    querySnapshot.forEach((doc) => {
+      switch (true) {
+        case doc.data().count > 2:
+          tempStats = {
+            ...tempStats,
+            wellKnown: tempStats.wellKnown + 1,
+          };
+          tempStreetsToDraw = [
+            ...tempStreetsToDraw,
+            ...streets[doc.data().name].map((e) => ({
+              ...e,
+              count: doc.data().count,
+              color: "darkgreen",
+            })),
+          ];
+          break;
+        case doc.data().count === 2:
+          tempStats = {
+            ...tempStats,
+            known: tempStats.known + 1,
+          };
+          tempStreetsToDraw = [
+            ...tempStreetsToDraw,
+            ...streets[doc.data().name].map((e) => ({
+              ...e,
+              count: doc.data().count,
+              color: "green",
+            })),
+          ];
+          break;
+        case doc.data().count === 1:
+          tempStats = {
+            ...tempStats,
+            almostKnown: tempStats.almostKnown + 1,
+          };
+          tempStreetsToDraw = [
+            ...tempStreetsToDraw,
+            ...streets[doc.data().name].map((e) => ({
+              ...e,
+              count: doc.data().count,
+              color: "yellow",
+            })),
+          ];
+          break;
+        case doc.data().count < 1:
+          tempStats = {
+            ...tempStats,
+            unknown: tempStats.unknown + 1,
+          };
+          tempStreetsToDraw = [
+            ...tempStreetsToDraw,
+            ...streets[doc.data().name].map((e) => ({
+              ...e,
+              count: doc.data().count,
+              color: "red",
+            })),
+          ];
+          break;
+      }
+    });
+    setStats(tempStats);
+    setStreetsToDraw(tempStreetsToDraw);
+  };
 
   useEffect(() => {
-    const q = query(
-      collection(db, "users", userRef, "streets"),
-      where("division", "==", division)
-    );
+    if (userRef) {
+      const q = query(
+        collection(db, "users", userRef, "streets"),
+        where("division", "==", division)
+      );
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      let tempStats = { wellKnown: 0, known: 0, almostKnown: 0, unknown: 0 };
-      let tempStreetsToDraw = [];
-      querySnapshot.forEach((doc) => {
-        console.log(doc.data());
-
-        switch (true) {
-          case doc.data().count > 2:
-            console.log("well known");
-            tempStats = {
-              ...tempStats,
-              wellKnown: tempStats.wellKnown + 1,
-            };
-            tempStreetsToDraw = [
-              ...tempStreetsToDraw,
-              ...streets[doc.data().name].map((e) => ({
-                ...e,
-                color: "darkgreen",
-              })),
-            ];
-            break;
-          case doc.data().count === 2:
-            console.log("known");
-            tempStats = {
-              ...tempStats,
-              known: tempStats.known + 1,
-            };
-            tempStreetsToDraw = [
-              ...tempStreetsToDraw,
-              ...streets[doc.data().name].map((e) => ({
-                ...e,
-                color: "green",
-              })),
-            ];
-            break;
-          case doc.data().count === 1:
-            console.log("almost known");
-            tempStats = {
-              ...tempStats,
-              almostKnown: tempStats.almostKnown + 1,
-            };
-            tempStreetsToDraw = [
-              ...tempStreetsToDraw,
-              ...streets[doc.data().name].map((e) => ({
-                ...e,
-                color: "yellow",
-              })),
-            ];
-            break;
-          case doc.data().count < 1:
-            console.log("unknown");
-            tempStats = {
-              ...tempStats,
-              unknown: tempStats.unknown + 1,
-            };
-            tempStreetsToDraw = [
-              ...tempStreetsToDraw,
-              ...streets[doc.data().name].map((e) => ({ ...e, color: "red" })),
-            ];
-            break;
-        }
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        getStreetsToDraw(querySnapshot);
       });
-      console.log(tempStats);
-      setStats(tempStats);
-      setStreetsToDraw(tempStreetsToDraw);
-    });
-    return () => unsubscribe();
+      return () => unsubscribe();
+    } else {
+      setStats({
+        wellKnown: 0,
+        known: 0,
+        almostKnown: 0,
+        unknown: 0,
+      });
+      setStreetsToDraw([]);
+    }
   }, [division, userRef]);
 
   useEffect(() => {
@@ -259,8 +296,20 @@ const Quiz = ({
           <Tag size="lg" colorScheme="green">
             Znam: {stats.known}
           </Tag>
-          <Tag size="lg" colorScheme="orange">Jeszcze się uczę: {stats.almostKnown}</Tag>
-          <Tag size="lg" colorScheme="red">Nie znam: {stats.unknown}</Tag>
+          <Tag size="lg" colorScheme="orange">
+            Jeszcze się uczę: {stats.almostKnown}
+          </Tag>
+          <Tag size="lg" colorScheme="red">
+            Nie znam: {stats.unknown}
+          </Tag>
+          <Tag size="lg">
+            Jeszcze nieodkryte:{" "}
+            {Object.keys(streets).length -
+              (stats.wellKnown +
+                stats.known +
+                stats.almostKnown +
+                stats.unknown)}
+          </Tag>
         </div>
       ) : (
         <div>
@@ -294,8 +343,8 @@ const Quiz = ({
         </div>
       )}
 
-      {/* <button onClick={() => newOptions()}>New options</button> */}
       <div className="flex flex-col">
+        {/* <p>{caption}</p> */}
         {options.map((option, i) => {
           return (
             <Button
