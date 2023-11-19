@@ -41,3 +41,21 @@ export const weightedRandom = (items, weights) => {
     }
   }
 };
+
+
+export const getErrorMessages = (error) => {
+  switch (error) {
+    case "auth/email-already-in-use":
+      return "Adres email jest już używany";
+    case "auth/invalid-email":
+      return "Niepoprawny adres email";
+    case "auth/operation-not-allowed":
+      return "Niedozwolona operacja";
+    case "auth/weak-password":
+      return "Hasło za słabe";
+    case "auth/invalid-login-credentials":
+      return "Niepoprawny login lub hasło";
+    default:
+      return "Coś poszło nie tak";
+  }
+}

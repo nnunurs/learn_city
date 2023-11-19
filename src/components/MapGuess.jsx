@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { createContext, useEffect, useState } from "react";
 import DeckGL, { FlyToInterpolator } from "deck.gl";
 import Map from "react-map-gl";
 import { PathLayer, PolygonLayer, ScatterplotLayer } from "@deck.gl/layers";
@@ -417,7 +417,7 @@ function MapGuess() {
           </div>
         ) : (
           <div>
-            {userRef}
+            {/* {userRef} */}
             <Text fontSize="xl" fontWeight="bold">
               {division
                 .split("_")
@@ -436,12 +436,12 @@ function MapGuess() {
               </Button>
               <Login setUserRef={setUserRef} />
             </div>
-
+            {/* 
             {city !== "krakow" && (
               <Button type="button" onClick={() => setRadiusEnabled(true)}>
                 Ustaw promień
               </Button>
-            )}
+            )} */}
             <div className="flex my-3 justify-center">
               <Button
                 className="mr-4"

@@ -1,9 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useContext } from "react";
 
 import {
   Drawer,
   DrawerBody,
-  DrawerFooter,
   DrawerHeader,
   DrawerOverlay,
   DrawerContent,
@@ -13,103 +12,21 @@ import {
   useDisclosure,
   Avatar,
 } from "@chakra-ui/react";
-import { FaUser, FaGoogle } from "react-icons/fa";
+import { FaUser } from "react-icons/fa";
 
-import { UserLoginInput } from "./UserLoginInput";
+import { UserLoginForm } from "./UserLoginForm";
+import { UserRegisterForm } from "./UserRegisterForm";
 
-import { auth, googleProvider, db } from "../config/firebase";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-} from "firebase/auth";
-import {
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  getDocFromCache,
-} from "firebase/firestore";
+import { auth } from "../config/firebase";
+import { signOut } from "firebase/auth";
 
 export const Login = ({ setUserRef }) => {
-  const [email, setEmail] = useState("");
-  const [nick, setNick] = useState("");
-  const [password, setPassword] = useState("");
   const [user, setUser] = useState();
+  const [nick, setNick] = useState("");
   const [showLogin, setShowLogin] = useState(false);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const btnRef = useRef();
-
-  const defaultUser = (uid, nick, email, photoURL, provider) => {
-    return { uid, nick, email, photoURL, provider };
-  };
-
-  const handleSignIn = async () => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      const user = userCredential.user;
-      const userDoc = await addDoc(collection(db, "users"), {
-        ...defaultUser(user.uid, nick, user.email, user.photoURL, "local"),
-      });
-      setUserRef(userDoc.id);
-
-      setUser(userCredential.user);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleLogin = async () => {
-    try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      const q = query(
-        collection(db, "users"),
-        where("uid", "==", userCredential.user.uid)
-      );
-      const querySnapshot = await getDocs(q);
-      querySnapshot.forEach((doc) => setUserRef(doc.id));
-
-      setUser(userCredential.user);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    try {
-      const userCredential = await signInWithPopup(auth, googleProvider);
-      const user = userCredential.user;
-      const q = query(collection(db, "users"), where("uid", "==", user.uid));
-      const querySnapshot = await getDocs(q);
-      if (querySnapshot.empty) {
-        await addDoc(collection(db, "users"), {
-          ...defaultUser(
-            user.uid,
-            user.displayName,
-            user.email,
-            user.photoURL,
-            "google"
-          ),
-        });
-      }
-      querySnapshot.forEach((doc) => setUserRef(doc.id));
-
-      setUser(userCredential.user);
-    } catch (error) {
-      console.error(error);
-    }
-  };
 
   const handleSignOut = async () => {
     try {
@@ -156,89 +73,24 @@ export const Login = ({ setUserRef }) => {
                 <div className="flex flex-col">
                   <DrawerHeader>Logowanie</DrawerHeader>
                   <DrawerBody>
-                    <UserLoginInput
-                      label="Adres email"
-                      type="email"
-                      placeholder="Email"
-                      value={email}
-                      setter={setEmail}
+                    <UserLoginForm
+                      setUser={setUser}
+                      setUserRef={setUserRef}
+                      setShowLogin={setShowLogin}
+                      setNick={setNick}
                     />
-                    <UserLoginInput
-                      label="Hasło"
-                      type="password"
-                      placeholder="Hasło"
-                      value={password}
-                      setter={setPassword}
-                    />
-                    <div className="mt-4">
-                      <Button
-                        colorScheme="green"
-                        className="mr-4"
-                        onClick={handleLogin}
-                      >
-                        Zaloguj się
-                      </Button>
-                      <IconButton
-                        aria-label="Zaloguj się z Google"
-                        icon={<FaGoogle />}
-                        onClick={handleGoogleSignIn}
-                      />
-                      <Button
-                        className="mt-2"
-                        onClick={() => setShowLogin(false)}
-                        variant="link"
-                      >
-                        Nie masz konta? Zarejestruj się
-                      </Button>
-                    </div>
                   </DrawerBody>
                 </div>
               ) : (
                 <div className="flex flex-col">
                   <DrawerHeader>Rejestracja</DrawerHeader>
                   <DrawerBody>
-                    <UserLoginInput
-                      label="Nick"
-                      type="text"
-                      placeholder="Nick"
-                      value={nick}
-                      setter={setNick}
+                    <UserRegisterForm
+                      setShowLogin={setShowLogin}
+                      setUserRef={setUserRef}
+                      setUser={setUser}
+                      setNick={setNick}
                     />
-                    <UserLoginInput
-                      label="Adres "
-                      type="email"
-                      placeholder="Email"
-                      value={email}
-                      setter={setEmail}
-                    />
-                    <UserLoginInput
-                      label="Hasło"
-                      type="password"
-                      placeholder="Hasło"
-                      value={password}
-                      setter={setPassword}
-                    />
-                    <div className="mt-4">
-                      <Button
-                        className="mr-4"
-                        colorScheme="green"
-                        onClick={handleSignIn}
-                      >
-                        Zarejestruj się
-                      </Button>
-                      <IconButton
-                        aria-label="Zaloguj się z Google"
-                        icon={<FaGoogle />}
-                        onClick={handleGoogleSignIn}
-                      />
-                      <Button
-                        className="mt-2"
-                        onClick={() => setShowLogin(true)}
-                        variant="link"
-                      >
-                        Masz już konto? Zaloguj się
-                      </Button>
-                    </div>
                   </DrawerBody>
                 </div>
               )}
