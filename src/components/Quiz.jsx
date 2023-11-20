@@ -3,7 +3,11 @@ import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import { Button, Tag } from "@chakra-ui/react";
-import { filterObj, findIndexByName } from "../scripts/scripts";
+import {
+  filterObj,
+  findIndexByName,
+  keywordBasedFilter,
+} from "../scripts/scripts";
 
 import { db } from "../config/firebase";
 import {
@@ -58,6 +62,7 @@ const Quiz = ({
     unknown: 0,
   });
   const [cookies, setCookie] = useCookies(["score"]);
+  const [score, setScore] = useState({"krakow": {}, "zakopane": {}});
   const [checked, setChecked] = useState(false);
   const [caption, setCaption] = useState(
     "Ta ulica jeszcze nie była przez ciebie zgadywana"
@@ -79,6 +84,7 @@ const Quiz = ({
   };
 
   const checkAnswer = async (option) => {
+    //TODO optimize the amount of db reading
     const streetsRef = collection(db, "users", userRef, "streets");
     console.log("ref", userRef);
     const q = query(
@@ -148,26 +154,6 @@ const Quiz = ({
       newStreet();
       setChecked(false);
     }, 1000);
-  };
-
-  const keywordBasedFilter = (correct, keywords, obj) => {
-    console.log("before filtering", obj);
-    for (let i = 0; i < keywords.length; i++) {
-      if (correct.toLowerCase().includes(keywords[i])) {
-        const filtered = filterObj(
-          obj,
-          (e) =>
-            e[0].name.toLowerCase().includes(keywords[i]) &&
-            e[0].name !== correct
-        );
-        console.log("filtered", filtered);
-        if (Object.keys(filtered).length < 2) {
-          return obj;
-        }
-        return filtered;
-      }
-    }
-    return obj;
   };
 
   useEffect(() => {
@@ -355,8 +341,8 @@ const Quiz = ({
                 option === correct && checked
                   ? "green"
                   : checked
-                  ? "red"
-                  : "gray"
+                    ? "red"
+                    : "gray"
               }
               className={"mt-3"}
             >

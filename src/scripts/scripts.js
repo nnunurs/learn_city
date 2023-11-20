@@ -42,6 +42,26 @@ export const weightedRandom = (items, weights) => {
   }
 };
 
+export const keywordBasedFilter = (correct, keywords, obj) => {
+  console.log("before filtering", obj);
+  for (let i = 0; i < keywords.length; i++) {
+    if (correct.toLowerCase().includes(keywords[i])) {
+      const filtered = filterObj(
+        obj,
+        (e) =>
+          e[0].name.toLowerCase().includes(keywords[i]) &&
+          e[0].name !== correct
+      );
+      console.log("filtered", filtered);
+      if (Object.keys(filtered).length < 2) {
+        return obj;
+      }
+      return filtered;
+    }
+  }
+  return obj;
+};
+
 
 export const getErrorMessages = (error) => {
   switch (error) {
