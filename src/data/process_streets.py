@@ -1,19 +1,22 @@
 import json
 import math
 
-'''how to get data
+"""how to get data
 1.    get area code of the city with area[name="{city_name}"]
 2.      area({area_code});
         rel(area)["boundary"="administrative"];
         out geom;
 3. find relation id with the above code
-4. find city outline with rel({relation_if})'''
+4. find city outline with rel({relation_if})"""
 
 global center
 center = {
     "krakow": (50.06168144356519, 19.937328289497746),
     "zakopane": (49.29389943354241, 19.95370589727813),
 }
+
+global black_list
+black_list = ["Antresola", "Schody z filmu Lista Schindlera", "Skrót Drużyny Pierścienia"]
 
 
 def is_bridge(street):
@@ -136,8 +139,8 @@ def generate_weights(city):
 
 
 def generate_divisions(city):
-    with open(f"{city}_divisions_in.geojson") as streets_file:
-        divs = json.load(streets_file)["features"]
+    with open(f"{city}_divisions_in.json") as divs_file:
+        divs = json.load(divs_file)["features"]
 
         with open(f"{city}_streets.json") as streets_file:
             streets = json.load(streets_file)
@@ -150,6 +153,7 @@ def generate_divisions(city):
                     # print(div_name)
                     for street_main in streets:
                         for street in streets[street_main]:
+                            # print(street)
                             poly = div["geometry"]["coordinates"][0]
                             if is_inside(
                                 poly,
@@ -157,13 +161,15 @@ def generate_divisions(city):
                             ):
                                 print(street["name"])
                                 if div_name in div_out:
-                                    if street_main in div_out[div_name]:
-                                        div_out[div_name][street_main].append(street)
-                                    else:
-                                        div_out[div_name][street_main] = [street]
+                                    if not street_main in div_out[div_name]:
+                                        div_out[div_name][street_main] = streets[
+                                            street_main
+                                        ]
                                 else:
-                                    div_out[div_name] = {street_main: [street]}
-                                # break
+                                    div_out[div_name] = {
+                                        street_main: streets[street_main]
+                                    }
+                                break
 
             json_obj = json.dumps(div_out, indent=True, ensure_ascii=False)
             with open(f"{city}_divisions.json", "w") as out:
