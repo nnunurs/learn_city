@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import DeckGL, { FlyToInterpolator } from "deck.gl";
 import Map from "react-map-gl";
 import { PathLayer, PolygonLayer, ScatterplotLayer } from "@deck.gl/layers";
