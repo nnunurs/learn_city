@@ -62,7 +62,7 @@ const Quiz = ({
     unknown: 0,
   });
   const [cookies, setCookie] = useCookies(["score"]);
-  const [score, setScore] = useState({"krakow": {}, "zakopane": {}});
+  const [score, setScore] = useState({ krakow: {}, zakopane: {} });
   const [checked, setChecked] = useState(false);
   const [caption, setCaption] = useState(
     "Ta ulica jeszcze nie była przez ciebie zgadywana"
@@ -183,63 +183,65 @@ const Quiz = ({
     let tempStats = { wellKnown: 0, known: 0, almostKnown: 0, unknown: 0 };
     let tempStreetsToDraw = [];
     querySnapshot.forEach((doc) => {
-      switch (true) {
-        case doc.data().count > 2:
-          tempStats = {
-            ...tempStats,
-            wellKnown: tempStats.wellKnown + 1,
-          };
-          tempStreetsToDraw = [
-            ...tempStreetsToDraw,
-            ...streets[doc.data().name].map((e) => ({
-              ...e,
-              count: doc.data().count,
-              color: "darkgreen",
-            })),
-          ];
-          break;
-        case doc.data().count === 2:
-          tempStats = {
-            ...tempStats,
-            known: tempStats.known + 1,
-          };
-          tempStreetsToDraw = [
-            ...tempStreetsToDraw,
-            ...streets[doc.data().name].map((e) => ({
-              ...e,
-              count: doc.data().count,
-              color: "green",
-            })),
-          ];
-          break;
-        case doc.data().count === 1:
-          tempStats = {
-            ...tempStats,
-            almostKnown: tempStats.almostKnown + 1,
-          };
-          tempStreetsToDraw = [
-            ...tempStreetsToDraw,
-            ...streets[doc.data().name].map((e) => ({
-              ...e,
-              count: doc.data().count,
-              color: "yellow",
-            })),
-          ];
-          break;
-        case doc.data().count < 1:
-          tempStats = {
-            ...tempStats,
-            unknown: tempStats.unknown + 1,
-          };
-          tempStreetsToDraw = [
-            ...tempStreetsToDraw,
-            ...streets[doc.data().name].map((e) => ({
-              ...e,
-              count: doc.data().count,
-              color: "red",
-            })),
-          ];
-          break;
+      if (streets[doc.data().name]) {
+        switch (true) {
+          case doc.data().count > 2:
+            tempStats = {
+              ...tempStats,
+              wellKnown: tempStats.wellKnown + 1,
+            };
+            tempStreetsToDraw = [
+              ...tempStreetsToDraw,
+              ...streets[doc.data().name].map((e) => ({
+                ...e,
+                count: doc.data().count,
+                color: "darkgreen",
+              })),
+            ];
+            break;
+          case doc.data().count === 2:
+            tempStats = {
+              ...tempStats,
+              known: tempStats.known + 1,
+            };
+            tempStreetsToDraw = [
+              ...tempStreetsToDraw,
+              ...streets[doc.data().name].map((e) => ({
+                ...e,
+                count: doc.data().count,
+                color: "green",
+              })),
+            ];
+            break;
+          case doc.data().count === 1:
+            tempStats = {
+              ...tempStats,
+              almostKnown: tempStats.almostKnown + 1,
+            };
+            tempStreetsToDraw = [
+              ...tempStreetsToDraw,
+              ...streets[doc.data().name].map((e) => ({
+                ...e,
+                count: doc.data().count,
+                color: "yellow",
+              })),
+            ];
+            break;
+          case doc.data().count < 1:
+            tempStats = {
+              ...tempStats,
+              unknown: tempStats.unknown + 1,
+            };
+            tempStreetsToDraw = [
+              ...tempStreetsToDraw,
+              ...streets[doc.data().name].map((e) => ({
+                ...e,
+                count: doc.data().count,
+                color: "red",
+              })),
+            ];
+            break;
+        }
       }
     });
     setStats(tempStats);
