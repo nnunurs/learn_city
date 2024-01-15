@@ -27,6 +27,8 @@ import {
 } from "../scripts/scripts";
 import Quiz from "./Quiz";
 import { Login } from "./Login";
+import changelog from "../changelog.json";
+import { Changelog } from "./Changelog";
 
 const center = {
   krakow: [50.06168144356519, 19.937328289497746],
@@ -472,6 +474,7 @@ function MapGuess() {
           </div>
         )}
       </div>
+      <Changelog version={changelog.version} changes={changelog.changes} />
     </div>
   );
 }

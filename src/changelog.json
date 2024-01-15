@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "changes": [
+    "Przywrócono mosty!",
+    "Naprawiono błąd z nieuwzględnianiem ulic, które kończyły się w danej dzielnicy (na przykład Czarnowiejska)"
+  ]
+}

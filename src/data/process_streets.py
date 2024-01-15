@@ -16,7 +16,12 @@ center = {
 }
 
 global black_list
-black_list = ["Antresola", "Schody z filmu Lista Schindlera", "Skrót Drużyny Pierścienia"]
+black_list = [
+    "Antresola",
+    "Schody z filmu Lista Schindlera",
+    "Skrót Drużyny Pierścienia",
+    "ramp",
+]
 
 
 def is_bridge(street):
@@ -62,23 +67,15 @@ def process_data(city):
     with open(f"{city}_in_streets.geojson") as file:
         data = json.load(file)["features"]
         out = {}
-        max_dist = 0
 
         for street in data:
             name = street["properties"]["name"]
-            points = [coord[::-1] for coord in street["geometry"]["coordinates"]]
-            if name != None and not is_bridge(street):
+            points = [point[::-1] for point in street["geometry"]["coordinates"]]
+            if name != None and name not in black_list:
                 if is_inside(boundary_polygon, points[0]):
-                    dist = get_distance(
-                        center[city],
-                        [float(x) for x in points[0]],
-                    )
-                    max_dist = max(dist, max_dist)
-
                     out_street = {
                         "name": name,
-                        "path": [coord[::-1] for coord in points],
-                        "dist": dist,
+                        "path": [point[::-1] for point in points],
                     }
 
                     if name in out:
@@ -86,55 +83,10 @@ def process_data(city):
                     else:
                         out[name] = [out_street]
                 else:
-                    print("street not in boundry")
+                    print(f"{name} street not in boundry")
 
-    print(max_dist)
     json_obj = json.dumps(out, indent=True, ensure_ascii=False)
     with open(f"{city}_streets.json", "w") as out:
-        out.write(json_obj)
-
-
-def generate_weights(city):
-    with open(f"{city}_in_streets.geojson") as file:
-        data = json.load(file)["features"]
-
-        max_dist = 0
-        boundary_polygon = get_boundary_polygon()
-
-        for street in data:
-            name = street["properties"]["name"]
-            points = [coord[::-1] for coord in street["geometry"]["coordinates"]]
-
-            if name != None and not is_bridge(street):
-                if is_inside(boundary_polygon, points[0]):
-                    dist = get_distance(
-                        center[city],
-                        [float(x) for x in points[0]],
-                    )
-                    max_dist = max(dist, max_dist)
-                else:
-                    print("street not in boundary")
-
-    penalty = float(input("wpisz współczynnik kary\n"))
-    weights = {}
-
-    with open(f"{city}_divisions.json") as div_file:
-        divs = json.load(div_file)
-
-        for div in divs:
-            for street in divs[div]:
-                # print(divs[div][street][0]["dist"] * 0.9)
-                if div in weights:
-                    weights[div][street] = (
-                        max_dist - divs[div][street][0]["dist"] * penalty
-                    )
-                else:
-                    weights[div] = {
-                        street: max_dist - divs[div][street][0]["dist"] * penalty
-                    }
-
-    json_obj = json.dumps(weights, indent=True, ensure_ascii=False)
-    with open(f"{city}_weights.json", "w") as out:
         out.write(json_obj)
 
 
@@ -155,9 +107,14 @@ def generate_divisions(city):
                         for street in streets[street_main]:
                             # print(street)
                             poly = div["geometry"]["coordinates"][0]
-                            if is_inside(
-                                poly,
-                                street["path"][0],
+                            if any(
+                                [
+                                    is_inside(
+                                        poly,
+                                        point,
+                                    )
+                                    for point in street["path"]
+                                ]
                             ):
                                 print(street["name"])
                                 if div_name in div_out:
@@ -222,22 +179,20 @@ def filter_division(city):
 
 city = input("wpisz nazwe miasta\n")
 choice = input(
-    "1. process data\n2. generate weights\n3. both\n4. generate divisions\n5. reverse divisions\n6. filter divisions\n"
+    "1. process data\n2. process data and generate divisions\n3. generate divisions\n4. reverse divisions\n5. filter divisions\n"
 )
 
 match choice:
     case "1":
         process_data(city)
     case "2":
-        generate_weights(city)
-    case "3":
         process_data(city)
-        generate_weights(city)
-    case "4":
         generate_divisions(city)
-    case "5":
+    case "3":
+        generate_divisions(city)
+    case "4":
         reverse_divisions(city)
-    case "6":
+    case "5":
         filter_division(city)
     case _:
         print("wrong choice")
