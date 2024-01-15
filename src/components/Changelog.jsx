@@ -16,7 +16,7 @@ import { useCookies } from "react-cookie";
 
 export const Changelog = ({ version, changes }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [versionCookie, setVersionCookie] = useCookies(["score"]);
+  const [versionCookie, setVersionCookie] = useCookies(["version"]);
 
   useEffect(() => {
     if (versionCookie.version !== version) {
