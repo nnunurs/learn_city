@@ -13,6 +13,7 @@ import {
   SliderFilledTrack,
   SliderThumb,
   SliderMark,
+  IconButton,
 } from "@chakra-ui/react";
 
 import krakowStreets from "../data/krakow_divisions.json";
@@ -27,6 +28,8 @@ import {
 } from "../scripts/scripts";
 import Quiz from "./Quiz";
 import { Login } from "./Login";
+
+import { FaFlag } from "react-icons/fa";
 
 const center = {
   krakow: [50.06168144356519, 19.937328289497746],
@@ -256,7 +259,7 @@ function MapGuess() {
     }
   }, [city]);
 
-  useEffect(() => {
+  const focusOnStreet = () => {
     setViewState({
       longitude: currentStreet[0].path[0][0],
       latitude: currentStreet[0].path[0][1],
@@ -264,6 +267,10 @@ function MapGuess() {
       transitionDuration: 1000,
       transitionInterpolator: new FlyToInterpolator(),
     });
+  };
+
+  useEffect(() => {
+    focusOnStreet(currentStreet);
 
     setLayers(
       new PathLayer({
@@ -326,8 +333,8 @@ function MapGuess() {
   }, [radius]);
 
   return (
-    <div className="flex h-screen">
-      <div className="m-5 justify-center align-center">
+    <div className="flex h-screen w-screen justify-start">
+      <div className="justify-center align-center">
         {visible ? (
           <Badge
             className="fixed z-10"
@@ -356,7 +363,7 @@ function MapGuess() {
             width: "70%",
             height: "80%",
             left: "2%",
-            top: "5%",
+            top: "3%",
           }}
           controller={isControllerEnabled}
           layers={layers}
@@ -416,7 +423,7 @@ function MapGuess() {
             </Button>
           </div>
         ) : (
-          <div>
+          <div className="flex flex-col gap-2">
             {/* {userRef} */}
             <Text fontSize="xl" fontWeight="bold">
               {division
@@ -426,15 +433,22 @@ function MapGuess() {
                 })
                 .join(" ")}
             </Text>
-            <div className="flex">
+            <div className="flex gap-4 justify-between">
+              <IconButton
+                className=""
+                aria-label="Wróć do ulicy"
+                onClick={focusOnStreet}
+                icon={<FaFlag />}
+                title="Wróc do ulicy"
+              />
               <Button
-                className="mr-4"
+                className=""
                 type="button"
                 onClick={enableDivisionsView}
               >
                 Zmień dzielnicę
               </Button>
-              <Login setUserRef={setUserRef} />
+              <Login setUserRef={setUserRef}/>
             </div>
             {/* 
             {city !== "krakow" && (
@@ -442,7 +456,7 @@ function MapGuess() {
                 Ustaw promień
               </Button>
             )} */}
-            <div className="flex my-3 justify-center">
+            <div className="flex justify-center">
               <Button
                 className="mr-4"
                 type="button"

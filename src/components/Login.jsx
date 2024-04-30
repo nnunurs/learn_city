@@ -40,7 +40,12 @@ export const Login = ({ setUserRef }) => {
 
   return (
     <div>
-      <IconButton aria-label="Manage user" icon={<FaUser />} onClick={onOpen}>
+      <IconButton
+        aria-label="Manage user"
+        icon={<FaUser />}
+        onClick={onOpen}
+        title="Zarządzaj kontem"
+      >
         Otwórz menu
       </IconButton>
       <Drawer
