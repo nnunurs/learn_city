@@ -1,7 +1,6 @@
 {
-  "version": "0.0.1",
+  "version": "0.0.2",
   "changes": [
-    "Przywrócono mosty!",
-    "Naprawiono błąd z nieuwzględnianiem ulic, które kończyły się w danej dzielnicy (na przykład Czarnowiejska)"
+    "Dodano nowy przycisk do powrotu do aktualnej ulicy"
   ]
 }
