@@ -142,7 +142,7 @@ const Quiz = ({
       } else {
         querySnapshot.forEach(async (doc) => {
           await updateDoc(doc.ref, {
-            count: doc.data().count === 1 ? -1 : doc.data().count - 1,
+            count: doc.data().count === 1 ? -1 : 0,
           });
         });
       }
@@ -172,7 +172,7 @@ const Quiz = ({
     newOptions(
       keywordBasedFilter(
         correct,
-        ["rondo", "skwer", "plac", "bulwar", "aleja", "droga"],
+        ["rondo", "skwer", "plac", "bulwar", "aleja", "droga", "most"],
         streets
       )
     );

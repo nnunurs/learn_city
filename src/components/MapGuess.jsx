@@ -28,6 +28,8 @@ import {
 } from "../scripts/scripts";
 import Quiz from "./Quiz";
 import { Login } from "./Login";
+import changelog from "../changelog.json";
+import { Changelog } from "./Changelog";
 
 import { FaFlag } from "react-icons/fa";
 
@@ -486,6 +488,7 @@ function MapGuess() {
           </div>
         )}
       </div>
+      <Changelog version={changelog.version} changes={changelog.changes} />
     </div>
   );
 }
