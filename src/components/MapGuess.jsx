@@ -335,7 +335,7 @@ function MapGuess() {
   }, [radius]);
 
   return (
-    <div className="flex h-screen w-screen justify-start">
+    <div className="h-screen w-screen items-end justify-center sm:justify-end sm:items-start flex">
       <div className="justify-center align-center">
         {visible ? (
           <Badge
@@ -361,12 +361,12 @@ function MapGuess() {
           }}
           viewState={viewState}
           onViewStateChange={(e) => setViewState(e.viewState)}
-          style={{
-            width: "70%",
-            height: "80%",
-            left: "2%",
-            top: "3%",
-          }}
+          // style={{
+          //   width: "70%",
+          //   height: "80%",
+          //   left: "2%",
+          //   top: "3%",
+          // }}
           controller={isControllerEnabled}
           layers={layers}
         >
@@ -379,7 +379,9 @@ function MapGuess() {
           />
         </DeckGL>
       </div>
-      <div className="flex flex-col m-5 absolute right-5 top-5">
+
+      {/* Buttons panel */}
+      <div className="flex flex-col m-5 right-5 top-5 glass rounded-md p-4 w-screen md:w-fit lg:w-fit">
         {radiusEnabled ? (
           <div className="flex flex-col justify-center align-center">
             <Text fontSize="xl" fontWeight="bold">
@@ -435,22 +437,22 @@ function MapGuess() {
                 })
                 .join(" ")}
             </Text>
-            <div className="flex gap-4 justify-between">
-              <IconButton
-                className=""
-                aria-label="Wróć do ulicy"
+            <div className="flex gap-4 justify-center">
+              <button
+                className="btn shadow-sm"
                 onClick={focusOnStreet}
-                icon={<FaFlag />}
                 title="Wróc do ulicy"
-              />
-              <Button
-                className=""
+              >
+                <FaFlag />
+              </button>
+              <button
+                className="btn shadow-sm"
                 type="button"
                 onClick={enableDivisionsView}
               >
                 Zmień dzielnicę
-              </Button>
-              <Login setUserRef={setUserRef}/>
+              </button>
+              <Login setUserRef={setUserRef} />
             </div>
             {/* 
             {city !== "krakow" && (
@@ -459,18 +461,22 @@ function MapGuess() {
               </Button>
             )} */}
             <div className="flex justify-center">
-              <Button
-                className="mr-4"
+              <button
+                className="mr-4 btn shadow-sm"
                 type="button"
                 onClick={() => {
                   city === "krakow" ? setCity("zakopane") : setCity("krakow");
                 }}
               >
                 {city === "krakow" ? "Zakopane" : "Kraków"}
-              </Button>
-              <Button type="button" onClick={() => cleanCookies()}>
+              </button>
+              <button
+                className="btn"
+                type="button"
+                onClick={() => cleanCookies()}
+              >
                 Zresetuj postępy
-              </Button>
+              </button>
             </div>
             {!userRef && "Zaloguj się aby zapisywać postępy"}
             {quizEnabled && (
