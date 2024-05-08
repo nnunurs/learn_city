@@ -2,6 +2,7 @@ import { ChakraProvider } from "@chakra-ui/react";
 import { CookiesProvider } from "react-cookie";
 
 import MapGuess from "./components/MapGuess";
+import "./App.css";
 
 function App() {
   return (

@@ -1,8 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
-
-import { Button, Tag } from "@chakra-ui/react";
 import {
   filterObj,
   findIndexByName,
@@ -11,14 +9,14 @@ import {
 
 import { db } from "../config/firebase";
 import {
+  addDoc,
+  and,
   collection,
   getDocs,
-  addDoc,
-  updateDoc,
   onSnapshot,
   query,
+  updateDoc,
   where,
-  and,
 } from "firebase/firestore";
 
 const shuffle = (array) => {
@@ -65,19 +63,19 @@ const Quiz = ({
   const [score, setScore] = useState({ krakow: {}, zakopane: {} });
   const [checked, setChecked] = useState(false);
   const [caption, setCaption] = useState(
-    "Ta ulica jeszcze nie była przez ciebie zgadywana"
+    "Ta ulica jeszcze nie była przez ciebie zgadywana",
   );
 
   const newOptions = (availableOptions) => {
     console.log("refreshing options", correct);
     const option1 = getRandomStreet(
-      filterObj(availableOptions, (e) => e[0].name !== correct)
+      filterObj(availableOptions, (e) => e[0].name !== correct),
     );
     const option2 = getRandomStreet(
       filterObj(
         availableOptions,
-        (e) => e[0].name !== correct && e[0].name !== option1
-      )
+        (e) => e[0].name !== correct && e[0].name !== option1,
+      ),
     );
 
     setOptions(shuffle([correct, option1, option2]));
@@ -89,7 +87,7 @@ const Quiz = ({
     console.log("ref", userRef);
     const q = query(
       streetsRef,
-      and(where("name", "==", correct), where("division", "==", division))
+      and(where("name", "==", correct), where("division", "==", division)),
     );
     const querySnapshot = await getDocs(q);
 
@@ -173,8 +171,8 @@ const Quiz = ({
       keywordBasedFilter(
         correct,
         ["rondo", "skwer", "plac", "bulwar", "aleja", "droga", "most"],
-        streets
-      )
+        streets,
+      ),
     );
     console.log(options);
   }, [correct, division]);
@@ -252,7 +250,7 @@ const Quiz = ({
     if (userRef) {
       const q = query(
         collection(db, "users", userRef, "streets"),
-        where("division", "==", division)
+        where("division", "==", division),
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -275,29 +273,29 @@ const Quiz = ({
   }, [stats]);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-4">
       {userRef ? (
         <div className="flex flex-col gap-3">
-          <Tag size="lg" colorScheme="teal">
+          <div className="bg-teal-200 py-2 px-4 text-md rounded-md">
             Dobrze znam: {stats.wellKnown}
-          </Tag>
-          <Tag size="lg" colorScheme="green">
+          </div>
+          <div className="bg-green-200 py-2 px-4 text-md rounded-md">
             Znam: {stats.known}
-          </Tag>
-          <Tag size="lg" colorScheme="orange">
+          </div>
+          <div className="bg-orange-200 py-2 px-4 text-md rounded-md">
             Jeszcze się uczę: {stats.almostKnown}
-          </Tag>
-          <Tag size="lg" colorScheme="red">
+          </div>
+          <div className="bg-red-300 py-2 px-4 text-md rounded-md">
             Nie znam: {stats.unknown}
-          </Tag>
-          <Tag size="lg">
+          </div>
+          <div className="bg-slate-200 py-2 px-4 text-md rounded-md">
             Jeszcze nieodkryte:{" "}
             {Object.keys(streets).length -
               (stats.wellKnown +
                 stats.known +
                 stats.almostKnown +
                 stats.unknown)}
-          </Tag>
+          </div>
         </div>
       ) : (
         <div>
@@ -317,7 +315,7 @@ const Quiz = ({
                   {cookies.score
                     ? getPercentage(
                         cookies.score[city][division].known.length,
-                        Object.keys(streets).length
+                        Object.keys(streets).length,
                       )
                     : "0%"}
                 </p>
@@ -331,25 +329,25 @@ const Quiz = ({
         </div>
       )}
 
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-2">
         {/* <p>{caption}</p> */}
         {options.map((option, i) => {
           return (
-            <Button
+            <button
               key={i}
               type="button"
               onClick={() => checkAnswer(option)}
-              colorScheme={
-                option === correct && checked
-                  ? "green"
+              className={
+                "btn " +
+                (option === correct && checked
+                  ? "bg-green-400 hover:bg-green-400"
                   : checked
-                    ? "red"
-                    : "gray"
+                    ? "bg-red-400 hover:bg-red-400"
+                    : "")
               }
-              className={"mt-3"}
             >
               {option}
-            </Button>
+            </button>
           );
         })}
       </div>

@@ -1,6 +1,8 @@
 {
-  "version": "0.0.2",
+  "version": "0.0.3",
   "changes": [
-    "Dodano nowy przycisk powrotu do aktualnej ulicy"
+    "Nowy wygląd interfejsu",
+    "Mapa jest teraz pełnoekranowa",
+    "Naprawiono błąd z niewyświetlaniem kursora na przyciskach"
   ]
 }

@@ -5,15 +5,14 @@ import { PathLayer, PolygonLayer, ScatterplotLayer } from "@deck.gl/layers";
 import { useCookies } from "react-cookie";
 
 import {
-  Button,
-  Text,
   Badge,
+  Button,
   Slider,
-  SliderTrack,
   SliderFilledTrack,
-  SliderThumb,
   SliderMark,
-  IconButton,
+  SliderThumb,
+  SliderTrack,
+  Text,
 } from "@chakra-ui/react";
 
 import krakowStreets from "../data/krakow_divisions.json";
@@ -21,10 +20,10 @@ import krakowDivisions from "../data/krakow_divisions_filtered.json";
 import zakopaneStreets from "../data/zakopane_streets.json";
 
 import {
-  filterObj,
   clamp,
-  weightedRandom,
+  filterObj,
   findIndexByName,
+  weightedRandom,
 } from "../scripts/scripts";
 import Quiz from "./Quiz";
 import { Login } from "./Login";
@@ -71,7 +70,7 @@ function MapGuess() {
       getWidth: 7,
       getColor: [255, 0, 0],
       widthMinPixels: 3,
-    })
+    }),
   );
 
   const divisionsLayer = new PolygonLayer({
@@ -89,7 +88,7 @@ function MapGuess() {
     autoHighlight: true,
     onClick: (info) =>
       changeDivision(
-        info.object.properties.name.toLowerCase().replace(" ", "_")
+        info.object.properties.name.toLowerCase().replace(" ", "_"),
       ),
     onHover: (info) => (info.picked ? enableTooltip(info) : setVisible(false)),
   });
@@ -118,7 +117,7 @@ function MapGuess() {
         ...o,
         [key]: { correct: 0, wrong: 0, known: [], mistakes: [] },
       }),
-      {}
+      {},
     );
 
     setCookie("score", {
@@ -203,7 +202,7 @@ function MapGuess() {
   const distanceInMeters = (pointA, pointB) => {
     const distance = Math.sqrt(
       Math.pow(Math.abs(pointA[0] - pointB[0]), 2) +
-        Math.pow(Math.abs(pointA[1] - pointB[1]), 2)
+        Math.pow(Math.abs(pointA[1] - pointB[1]), 2),
     );
 
     return distanceConvertToMeters(distance);
@@ -216,9 +215,9 @@ function MapGuess() {
         (street) =>
           distanceInMeters(
             [street[0].path[0][1], street[0].path[0][0]],
-            center[city]
-          ) <= radius
-      )
+            center[city],
+          ) <= radius,
+      ),
     );
 
     setRadiusEnabled(false);
@@ -280,7 +279,7 @@ function MapGuess() {
         data: [
           ...currentStreet.map((e) => ({ ...e, color: "selected" })),
           ...streetsToDraw.map((e) =>
-            e.name === currentStreet[0].name ? { ...e, color: "selected" } : e
+            e.name === currentStreet[0].name ? { ...e, color: "selected" } : e,
           ),
         ],
         getWidth: (d) => (d.color === "selected" ? 7 : 4),
@@ -288,7 +287,7 @@ function MapGuess() {
         jointRounded: true,
         getColor: (d) => getColor(d.color),
         widthMinPixels: 3,
-      })
+      }),
     );
   }, [currentStreet, streetsToDraw]);
 
@@ -336,7 +335,7 @@ function MapGuess() {
 
   return (
     <div className="h-screen w-screen items-end justify-center sm:justify-end sm:items-start flex">
-      <div className="justify-center align-center">
+      <div className="justify-center align-center z-0">
         {visible ? (
           <Badge
             className="fixed z-10"
@@ -361,19 +360,14 @@ function MapGuess() {
           }}
           viewState={viewState}
           onViewStateChange={(e) => setViewState(e.viewState)}
-          // style={{
-          //   width: "70%",
-          //   height: "80%",
-          //   left: "2%",
-          //   top: "3%",
-          // }}
+          style={{ zIndex: 0, position: "fixed" }}
           controller={isControllerEnabled}
           layers={layers}
         >
           <Map
             longitude={viewState.longitude}
             latitude={viewState.latitude}
-            className="rounded-lg"
+            className="z-0"
             mapStyle="mapbox://styles/hangorus/clnwcu8aj004j01r26fh0fh1t"
             mapboxAccessToken="pk.eyJ1IjoiaGFuZ29ydXMiLCJhIjoiY2s4OTRtY3h6MDJ1bDNmazZwa2lpMXd2aiJ9.OLbJaQCSeZfv2vJ9RGduMg"
           />
@@ -381,7 +375,7 @@ function MapGuess() {
       </div>
 
       {/* Buttons panel */}
-      <div className="flex flex-col m-5 right-5 top-5 glass rounded-md p-4 w-screen md:w-fit lg:w-fit">
+      <div className="z-10 flex flex-col m-5 right-5 top-5 glass rounded-md p-4 w-screen md:w-fit lg:w-fit">
         {radiusEnabled ? (
           <div className="flex flex-col justify-center align-center">
             <Text fontSize="xl" fontWeight="bold">
