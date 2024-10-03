@@ -1,4 +1,16 @@
-#view-default-view > * {
-  z-index: 0;
-  position: relative;
-}
+/*#deckgl-wrapper > canvas {*/
+/*    z-index: 0;*/
+/*}*/
+/*#deckgl-wrapper > #deckgl-tooltip {*/
+/*    z-index: 2;*/
+/*}*/
+
+/*canvas {*/
+/*  position: absolute;*/
+/*    z-index: 0;*/
+/*}*/
+
+/*#view-default-view > * {*/
+/*  z-index: 1;*/
+/*  position: relative;*/
+/*}*/
