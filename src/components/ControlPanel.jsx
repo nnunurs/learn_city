@@ -31,7 +31,6 @@ function ControlPanel({ cleanCookies, getRandomStreet, onSaveRadius }) {
         setStreetsToDraw,
     } = useContext(MapContext);
 
-    
     return (
         <div className="glass right-5 top-5 z-10 m-5 flex w-screen flex-col rounded-md p-4 md:w-fit lg:w-fit">
             <div className="flex flex-col gap-2">
@@ -55,7 +54,14 @@ function ControlPanel({ cleanCookies, getRandomStreet, onSaveRadius }) {
                     <button
                         className="btn shadow-sm"
                         type="button"
-                        onClick={enableDivisionsView}
+                        onClick={() => {
+                            console.log('Przycisk kliknięty');
+                            if (enableDivisionsView) {
+                                enableDivisionsView();
+                            } else {
+                                console.log('enableDivisionsView jest undefined!');
+                            }
+                        }}
                     >
                         Zmień dzielnicę
                     </button>

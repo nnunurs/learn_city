@@ -22,29 +22,6 @@ const center = {
     zakopane: [49.29389943354241, 19.95370589727813],
 };
 
-const createDivisionsLayer = (changeDivision, enableTooltip, setVisible) => {
-    return new PolygonLayer({
-        id: "divisions-layer",
-        data: krakowDivisions.features,
-        pickable: true,
-        filled: true,
-        lineWidthMinPixels: 1,
-        lineJointRounded: true,
-        getPolygon: (d) => d.geometry.coordinates,
-        getFillColor: [199, 149, 80, 50],
-        getLineColor: [235, 140, 9],
-        getLineWidth: 100,
-        highlightColor: [255, 255, 255, 100],
-        autoHighlight: true,
-        onClick: (info) =>
-            changeDivision(
-                info.object.properties.name.toLowerCase().replace(" ", "_"),
-            ),
-        onHover: (info) =>
-            info.picked ? enableTooltip(info) : setVisible(false),
-    });
-};
-
 function MapGuess() {
     const {
         viewState,
@@ -71,6 +48,7 @@ function MapGuess() {
         layers,
         setLayers,
         setControllerEnabled,
+        enableDivisionsView,
     } = useContext(MapContext);
 
     const [cookies, setCookie] = useCookies(["score"]);
@@ -119,20 +97,6 @@ function MapGuess() {
         }
     };
 
-    const enableDivisionsView = () => {
-        setCity("krakow");
-        setViewState({
-            latitude: 50.06168144356519,
-            longitude: 19.937328289497746,
-            zoom: 10.5,
-            transitionDuration: 1000,
-            transitionInterpolator: new FlyToInterpolator(),
-        });
-        setLayers(
-            createDivisionsLayer(changeDivision, enableTooltip, setVisible),
-        );
-    };
-
     const getRandomStreet = () => {
         if (Object.keys(streets).length === 0) {
             console.warn("No streets available to select from.");
@@ -143,7 +107,7 @@ function MapGuess() {
             ...Object.keys(streets).map((e) => {
                 if (streetsToDraw.map((e) => e.name).includes(e)) {
                     switch (
-                        streetsToDraw[findIndexByName(streetsToDraw, e)].color
+                    streetsToDraw[findIndexByName(streetsToDraw, e)].color
                     ) {
                         case "darkgreen":
                             return 0.05;
@@ -197,7 +161,7 @@ function MapGuess() {
     const distanceInMeters = (pointA, pointB) => {
         const distance = Math.sqrt(
             Math.pow(Math.abs(pointA[0] - pointB[0]), 2) +
-                Math.pow(Math.abs(pointA[1] - pointB[1]), 2),
+            Math.pow(Math.abs(pointA[1] - pointB[1]), 2),
         );
 
         return distanceConvertToMeters(distance);

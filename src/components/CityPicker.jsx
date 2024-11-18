@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
+import { FaChevronRight } from "react-icons/fa";
 
 const CityPicker = () => {
     const [citySearchValue, setCitySearchValue] = useState("");
     const [cityDistricts, setCityDistricts] = useState([]);
     const [didSearch, setDidSearch] = useState(false);
     const [cityName, setCityName] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleCitySearch = async () => {
+        setIsLoading(true);
         console.log("Searching for city: ", citySearchValue);
         const districts = await getCityDistricts(citySearchValue);
         setCityDistricts(districts);
@@ -14,10 +17,10 @@ const CityPicker = () => {
 
         setCityName(citySearchValue);
         setCitySearchValue("");
+        setIsLoading(false);
     };
 
     const handleCitySearchValueChange = (event) => {
-        //set with capitalized first letter
         setCitySearchValue(
             event.target.value.charAt(0).toUpperCase() +
                 event.target.value.slice(1),
@@ -34,12 +37,16 @@ const CityPicker = () => {
 
     const handleCheckAll = (event) => {
         if (event.target.checked) {
-            setCityDistricts(cityDistricts.map((d) => ({ ...d, selected: true })))
+            setCityDistricts(
+                cityDistricts.map((d) => ({ ...d, selected: true })),
+            );
         } else {
-            setCityDistricts(cityDistricts.map((d) => ({ ...d, selected: false })))
+            setCityDistricts(
+                cityDistricts.map((d) => ({ ...d, selected: false })),
+            );
         }
     };
-    
+
     useEffect(() => {
         console.log(cityDistricts);
     }, [cityDistricts]);
@@ -88,18 +95,28 @@ const CityPicker = () => {
                 Wybierz miasto
             </button>
             <dialog id="city_picker" className="modal">
-                <div className="modal-box flex flex-col">
-                    <h3 className="text-lg font-bold">Wyszukiwanie</h3>
-                    <input
-                        type="text"
-                        className="input input-bordered"
-                        value={citySearchValue}
-                        placeholder="Wpisz nazwe miasta"
-                        onChange={handleCitySearchValueChange}
-                    />
-                    <button className="btn" onClick={handleCitySearch}>
-                        Wyszukaj
-                    </button>
+                <div className="modal-box flex flex-col gap-2">
+                    <h3 className="text-lg font-bold">Wyszukaj</h3>
+                    <label className="flex items-center gap-2">
+                        <input
+                            type="text"
+                            className={"input input-bordered grow"}
+                            value={citySearchValue}
+                            placeholder="Wpisz nazwe miasta"
+                            disabled={isLoading}
+                            onChange={handleCitySearchValueChange}
+                        />
+                        {isLoading ? (
+                            <span className="loading loading-spinner loading-md"></span>
+                        ) : (
+                            <button
+                                className="btn btn-square"
+                                onClick={handleCitySearch}
+                            >
+                                <FaChevronRight />
+                            </button>
+                        )}
+                    </label>
                     {didSearch && cityDistricts.length !== 0 && (
                         <div>
                             <p>
@@ -139,11 +156,14 @@ const CityPicker = () => {
                         </p>
                     )}
                     <div className="modal-action">
-                        <form method="dialog">
+                        <form method="dialog" className="">
                             <button className="btn">Wybierz</button>
                         </form>
                     </div>
                 </div>
+                <form method="dialog" className="modal-backdrop">
+                    <button>zamknij</button>
+                </form>
             </dialog>
         </div>
     );
