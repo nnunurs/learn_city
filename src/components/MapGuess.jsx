@@ -49,6 +49,7 @@ function MapGuess() {
         setLayers,
         setControllerEnabled,
         enableDivisionsView,
+        setGetRandomStreet,
     } = useContext(MapContext);
 
     const [cookies, setCookie] = useCookies(["score"]);
@@ -80,21 +81,6 @@ function MapGuess() {
             setStreets(zakopaneStreets);
         }
         getRandomStreet();
-    };
-
-    const enableTooltip = (info) => {
-        setHovered(info);
-        setVisible(true);
-        setName(info.object.properties.name);
-    };
-
-    const changeDivision = (div) => {
-        if (div === division) {
-            getRandomStreet();
-        } else {
-            setDivision(div);
-            setStreets(krakowStreets[div]);
-        }
     };
 
     const getRandomStreet = () => {
@@ -195,8 +181,8 @@ function MapGuess() {
     }, [layers]);
 
     useEffect(() => {
-        getRandomStreet();
-    }, [streets]);
+        setGetRandomStreet(() => getRandomStreet);
+    }, []);
 
     useEffect(() => {
         switch (city) {
@@ -293,10 +279,16 @@ function MapGuess() {
         });
     }, [radius]);
 
+    useEffect(() => {
+        if (division) {
+            setStreets(krakowStreets[division]);
+        }
+    }, [division]);
+
     return (
         <div className="flex h-screen w-screen items-end justify-center sm:items-start sm:justify-end">
             <div className="">
-                {visible && (
+                {visible && hovered && (
                     <div
                         className="glass fixed z-10 rounded-md p-2 text-lg"
                         style={{

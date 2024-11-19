@@ -20,10 +20,13 @@ function MapComponent() {
 
   return (
     <DeckGL
-      initialViewState={initialViewState}
       viewState={viewState}
       onViewStateChange={(e) => setViewState(e.viewState)}
-      controller={isControllerEnabled}
+      controller={{
+        doubleClickZoom: false,
+        minZoom: 10.5,
+        maxZoom: 18,
+      }}
       layers={layers}
     >
       <Map
