@@ -1,4 +1,5 @@
 export const filterObj = (obj, predicate) => {
+  if (!obj) return {};
   const asArray = Object.entries(obj);
   const filtered = asArray.filter(([, value]) => predicate(value));
   return Object.fromEntries(filtered);

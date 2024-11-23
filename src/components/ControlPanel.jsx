@@ -1,49 +1,74 @@
-import { useContext, useState } from "react";
-import {
-    Button,
-    Text,
-    Slider,
-    SliderFilledTrack,
-    SliderMark,
-    SliderThumb,
-    SliderTrack,
-} from "@chakra-ui/react";
+import { useEffect, useState } from "react";
 import { FaFlag } from "react-icons/fa";
 import { Login } from "./Login";
 import Quiz from "./Quiz";
-import MapContext from "../context/MapContext";
 import PropTypes from "prop-types";
 import CityPicker from "./CityPicker";
 
-function ControlPanel({ cleanCookies, getRandomStreet, onSaveRadius }) {
-    const {
-        division,
-        city,
-        setCity,
-        focusOnStreet,
-        enableDivisionsView,
-        currentStreet,
-        streets,
-        userRef,
-        setUserRef,
-        quizEnabled,
-        streetsToDraw,
-        setStreetsToDraw,
-    } = useContext(MapContext);
+function ControlPanel({
+    getRandomStreet,
+    visible,
+    hovered,
+    name,
+    division,
+    focusOnStreet,
+    enableDivisionsView,
+    currentStreet,
+    streets,
+    userRef,
+    setUserRef,
+    quizEnabled,
+    streetsToDraw,
+    setStreetsToDraw,
+    isDivisionsView
+}) {
+    useEffect(() => {
+        console.log(quizEnabled, division, streets, currentStreet)
+    }, [quizEnabled]);
 
     return (
         <div className="glass right-5 top-5 z-10 m-5 flex w-screen flex-col rounded-md p-4 md:w-fit lg:w-fit">
+            {visible && hovered && (
+                <div
+                    className="glass fixed z-10 rounded-md p-2 text-lg"
+                    style={{
+                        left: hovered.x + 20,
+                        top: hovered.y + 20,
+                        pointerEvents: "none",
+                    }}
+                >
+                    {name}
+                </div>
+            )}
             <div className="flex flex-col gap-2">
-                <Text fontSize="xl" fontWeight="bold">
-                    {division
-                        .split("_")
-                        .map(
-                            (word) =>
-                                word.charAt(0).toUpperCase() + word.slice(1),
-                        )
-                        .join(" ")}
-                </Text>
-                <div className="flex justify-center gap-4">
+                {!userRef && (
+                    <div className="flex flex-col gap-2">
+                        <p className="text-center">Zaloguj sie by zagrać</p>
+                        <Login setUserRef={setUserRef}>
+                            {(onOpen) => (
+                                <button
+                                    className="btn shadow-sm"
+                                    onClick={onOpen}
+                                >
+                                    Zaloguj
+                                </button>
+                            )}
+                        </Login>
+                    </div>
+                )}
+                {userRef && (
+                    <p className="font-bold text-xl">
+                        {!isDivisionsView
+                            ? division
+                                .split("_")
+                                .map(
+                                    (word) =>
+                                        word.charAt(0).toUpperCase() + word.slice(1),
+                                )
+                                .join(" ")
+                            : "Wybierz dzielnicę"}
+                    </p>)}
+                {quizEnabled && (<div className="flex justify-center gap-4">
                     <button
                         className="btn shadow-sm"
                         onClick={focusOnStreet}
@@ -53,50 +78,23 @@ function ControlPanel({ cleanCookies, getRandomStreet, onSaveRadius }) {
                     </button>
                     <button
                         className="btn shadow-sm"
-                        type="button"
-                        onClick={() => {
-                            console.log('Przycisk kliknięty');
-                            if (enableDivisionsView) {
-                                enableDivisionsView();
-                            } else {
-                                console.log('enableDivisionsView jest undefined!');
-                            }
-                        }}
+                        onClick={enableDivisionsView}
+                        title="Zmień dzielnicę"
                     >
                         Zmień dzielnicę
                     </button>
                     <Login setUserRef={setUserRef} />
                 </div>
-                <div className="flex justify-center">
-                    <button
-                        className="btn mr-4 shadow-sm"
-                        type="button"
-                        onClick={() =>
-                            setCity(city === "krakow" ? "zakopane" : "krakow")
-                        }
-                    >
-                        {city === "krakow" ? "Zakopane" : "Kraków"}
-                    </button>
-                    <button
-                        className="btn"
-                        type="button"
-                        onClick={cleanCookies}
-                    >
-                        Zresetuj postępy
-                    </button>
-                </div>
-                <CityPicker />
-                {!userRef && "Zaloguj się aby zacząć się uczyć!"}
-                {quizEnabled && userRef && (
+                )}
+                {quizEnabled && division && streets && currentStreet && (
                     <Quiz
                         correct={currentStreet[0].name}
                         streets={streets}
-                        newStreet={getRandomStreet}
-                        city={city}
-                        division={division}
-                        userRef={userRef}
                         streetsToDraw={streetsToDraw}
                         setStreetsToDraw={setStreetsToDraw}
+                        newStreet={getRandomStreet}
+                        division={division}
+                        userRef={userRef}
                     />
                 )}
             </div>
@@ -107,7 +105,22 @@ function ControlPanel({ cleanCookies, getRandomStreet, onSaveRadius }) {
 ControlPanel.propTypes = {
     cleanCookies: PropTypes.func.isRequired,
     getRandomStreet: PropTypes.func.isRequired,
-    onSaveRadius: PropTypes.func.isRequired,
+    visible: PropTypes.bool.isRequired,
+    hovered: PropTypes.shape({
+        x: PropTypes.number,
+        y: PropTypes.number,
+    }),
+    name: PropTypes.string,
+    division: PropTypes.string,
+    focusOnStreet: PropTypes.func.isRequired,
+    enableDivisionsView: PropTypes.func.isRequired,
+    currentStreet: PropTypes.array,
+    streets: PropTypes.object,
+    userRef: PropTypes.string,
+    setUserRef: PropTypes.func.isRequired,
+    quizEnabled: PropTypes.bool.isRequired,
+    streetsToDraw: PropTypes.array.isRequired,
+    setStreetsToDraw: PropTypes.func.isRequired
 };
 
 export default ControlPanel;

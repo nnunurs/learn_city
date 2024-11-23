@@ -1,7 +1,6 @@
-import { useContext } from "react";
+import PropTypes from "prop-types";
 import DeckGL from "deck.gl";
 import Map from "react-map-gl";
-import MapContext from "../context/MapContext";
 
 const center = {
   krakow: [50.06168144356519, 19.937328289497746],
@@ -15,9 +14,7 @@ const initialViewState = {
   controller: true,
 };
 
-function MapComponent() {
-  const { viewState, setViewState, layers, isControllerEnabled } = useContext(MapContext);
-
+function MapComponent({ viewState, setViewState, layers, isControllerEnabled }) {
   return (
     <DeckGL
       viewState={viewState}
@@ -26,6 +23,7 @@ function MapComponent() {
         doubleClickZoom: false,
         minZoom: 10.5,
         maxZoom: 18,
+        ...(!isControllerEnabled && { dragPan: false, dragRotate: false }),
       }}
       layers={layers}
     >
@@ -38,5 +36,16 @@ function MapComponent() {
     </DeckGL>
   );
 }
+
+MapComponent.propTypes = {
+  viewState: PropTypes.shape({
+    longitude: PropTypes.number.isRequired,
+    latitude: PropTypes.number.isRequired,
+    zoom: PropTypes.number.isRequired,
+  }).isRequired,
+  setViewState: PropTypes.func.isRequired,
+  layers: PropTypes.array.isRequired,
+  isControllerEnabled: PropTypes.bool.isRequired,
+};
 
 export default MapComponent;

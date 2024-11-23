@@ -19,7 +19,7 @@ import { UserRegisterForm } from "./UserRegisterForm";
 import { auth } from "../config/firebase";
 import { signOut } from "firebase/auth";
 
-export const Login = ({ setUserRef }) => {
+export const Login = ({ setUserRef, children }) => {
   const [user, setUser] = useState();
   const [nick, setNick] = useState("");
   const [showLogin, setShowLogin] = useState(false);
@@ -38,10 +38,16 @@ export const Login = ({ setUserRef }) => {
   };
 
   return (
-    <div>
-      <button className="btn" onClick={onOpen} title="Zarządzaj kontem">
-        <FaUser />
-      </button>
+    <div className="flex items-center">
+      {children ? (
+        children(onOpen)
+      ) : (
+        <div className="avatar" onClick={onOpen} title="Zarządzaj kontem">
+          <div className="w-10 rounded-full">
+            <img className={""} src={user?.photoURL} alt="avatar" ref={btnRef} />
+          </div>
+        </div>
+      )}
       <Drawer
         isOpen={isOpen}
         placement="right"
