@@ -1,6 +1,61 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Fuse from 'fuse.js';
 import PropTypes from 'prop-types';
+import { 
+    DndContext, 
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    horizontalListSortingStrategy,
+    useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+const SortableStreet = ({ street, index, onRemove }) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition
+    } = useSortable({ id: street });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition
+    };
+
+    return (
+        <div className="flex items-center flex-shrink-0">
+            <div 
+                ref={setNodeRef} 
+                style={style} 
+                {...attributes} 
+                {...listeners}
+                className="flex items-center"
+            >
+                <div className="text-base-content opacity-50 mx-1 flex-shrink-0">→</div>
+                <div className="badge bg-primary/20 text-primary border-primary flex gap-2 max-w-[200px] overflow-hidden">
+                    <span className="truncate">{street}</span>
+                </div>
+            </div>
+            <button
+                onClick={() => onRemove(index)}
+                className="ml-1 hover:text-error flex-shrink-0"
+                type="button"
+            >
+                ×
+            </button>
+        </div>
+    );
+};
 
 const NavigationGame = ({
     streets,
@@ -21,9 +76,18 @@ const NavigationGame = ({
     const [streak, setStreak] = useState(0);
     const [showHint, setShowHint] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
     const [feedback, setFeedback] = useState("");
     const inputRef = useRef(null);
     const fuseRef = useRef(null);
+    const loadingRef = useRef(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
     // Initialize Fuse.js
     useEffect(() => {
@@ -39,6 +103,7 @@ const NavigationGame = ({
 
     useEffect(() => {
         if (streets && Object.keys(streets).length > 0) {
+            setIsLoading(true);
             generateNewChallenge();
         }
     }, [streets]);
@@ -227,6 +292,7 @@ const NavigationGame = ({
 
             // Generuj nowe wyzwanie po krótkim opóźnieniu
             setTimeout(() => {
+                setIsLoading(true);
                 generateNewChallenge();
             }, 2000);
         } else {
@@ -236,92 +302,124 @@ const NavigationGame = ({
         }
     };
 
-    const generateNewChallenge = () => {
+    // Funkcja do animacji loadera
+    const animateLoader = () => {
+        loadingRef.current = requestAnimationFrame(animateLoader);
+    };
+
+    // Funkcja do zatrzymania animacji
+    const stopLoader = () => {
+        if (loadingRef.current) {
+            cancelAnimationFrame(loadingRef.current);
+        }
+    };
+
+    const generateNewChallenge = async () => {
+        console.log('Starting generation...');
+        setIsGenerating(true);
         setIsLoading(true);
-        setSelectedStreets([]);
-        setSearchInput("");
-        setSearchResults([]);
-        setIsCorrect(null);
-        setFeedback("");
-        setShowHint(false);
+        
+        try {
+            // Dodaj małe opóźnienie, aby upewnić się, że stan się zaktualizował
+            await new Promise(resolve => setTimeout(resolve, 100));
 
-        // Wyczyść ścieżki
-        setPathData([]);
-        setMarkers([]);
+            // Najpierw znajdź odpowiednie ulice
+            const streetEntries = Object.entries(streets);
+            const startIndex = Math.floor(Math.random() * streetEntries.length);
+            const start = streetEntries[startIndex][1];
 
-        if (!streets || Object.keys(streets).length === 0) {
-            console.log('No streets available');
-            setIsLoading(false);
-            return;
-        }
+            // Stwórz tablicę indeksów do losowego przeszukiwania
+            const indices = Array.from({ length: streetEntries.length }, (_, i) => i)
+                .filter(i => i !== startIndex); // Usuń indeks ulicy startowej
+            
+            let end = null;
+            let attempts = 0;
+            const maxAttempts = 10;
 
-        // Wybierz losowe ulice start i koniec
-        const streetEntries = Object.entries(streets);
-        const startEntry = streetEntries[Math.floor(Math.random() * streetEntries.length)];
+            // Losowo przemieszaj indeksy
+            for (let i = indices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
 
-        if (!startEntry || !startEntry[1] || !startEntry[1][0]) {
-            console.error('Invalid start street data');
-            setIsLoading(false);
-            return;
-        }
+            // Szukaj odpowiedniej pary ulic
+            for (const index of indices) {
+                if (attempts >= maxAttempts) break;
+                attempts++;
 
-        const start = startEntry[1];
-        let end;
-        let attempts = 0;
-        const maxAttempts = 10;
+                const potentialEnd = streetEntries[index][1];
+                
+                // Szybkie sprawdzenie nazwy przed kosztownymi obliczeniami
+                if (potentialEnd[0].name === start[0].name) continue;
 
-        // Szukaj końcowej ulicy która jest połączona z początkową, ale nie bezpośrednio
-        do {
-            const endEntry = streetEntries[Math.floor(Math.random() * streetEntries.length)];
-            if (endEntry && endEntry[1] && endEntry[1][0] && endEntry[1][0].name !== start[0].name) {
-                const potentialEnd = endEntry[1];
-
-                // Sprawdź czy ulice nie są bezpośrednio połączone
-                const isDirectlyConnected = areStreetsConnected(start, potentialEnd, streets);
-
-                // Sprawdź czy istnieje jakakolwiek trasa między start a end
+                console.log(`Attempt ${attempts}: Checking ${start[0].name} -> ${potentialEnd[0].name}`);
+                
+                // Najpierw sprawdź czy istnieje trasa (mniej kosztowne)
                 const hasRoute = isRouteExists(start, potentialEnd, Object.values(streets));
+                if (!hasRoute) continue;
 
-                console.log(`Checking ${start[0].name} -> ${potentialEnd[0].name}`);
-                console.log(`Directly connected: ${isDirectlyConnected}`);
-                console.log(`Has route: ${hasRoute}`);
-
-                // Akceptuj tylko jeśli istnieje trasa, ale nie jest bezpośrednia
-                if (hasRoute && !isDirectlyConnected) {
+                // Potem sprawdź czy nie są bezpośrednio połączone (bardziej kosztowne)
+                const isDirectlyConnected = areStreetsConnected(start, potentialEnd, streets);
+                if (!isDirectlyConnected) {
                     end = potentialEnd;
                     break;
                 }
+
+                // Małe opóźnienie między próbami, aby nie blokować UI
+                if (attempts % 2 === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
             }
-            attempts++;
-            console.log(`Attempt ${attempts}/${maxAttempts}`);
-        } while (attempts < maxAttempts);
 
-        if (!end) {
-            console.error('Could not find valid street pair, trying again...');
-            generateNewChallenge(); // Spróbuj ponownie
-            return;
+            if (!end) {
+                console.log('Failed to find valid pair');
+                setIsGenerating(false);
+                setIsLoading(false);
+                return;
+            }
+
+            console.log('Found valid pair, setting up new challenge...');
+
+            // Czyść stany i ustaw nowe wartości w jednej partii
+            const updates = () => {
+                setSelectedStreets([]);
+                setSearchInput("");
+                setSearchResults([]);
+                setIsCorrect(null);
+                setFeedback("");
+                setShowHint(false);
+                setPathData([]);
+                setMarkers([]);
+                setStartStreet(start);
+                setEndStreet(end);
+                setStreetsToDraw([start[0].name.toLowerCase()]);
+            };
+            updates();
+
+            // Oblicz centrum widoku
+            const centerLat = (start[0].path[0][1] + end[0].path[0][1]) / 2;
+            const centerLng = (start[0].path[0][0] + end[0].path[0][0]) / 2;
+
+            setViewState(prev => ({
+                ...prev,
+                latitude: centerLat,
+                longitude: centerLng,
+                zoom: 14,
+                transitionDuration: 1000
+            }));
+
+            // Poczekaj na zakończenie animacji
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            console.log('Generation complete');
+            setIsGenerating(false);
+            setIsLoading(false);
+
+        } catch (error) {
+            console.error('Error generating challenge:', error);
+            setIsGenerating(false);
+            setIsLoading(false);
         }
-
-        console.log('=== New Challenge Generated ===');
-        console.log('Start street:', start[0].name);
-        console.log('End street:', end[0].name);
-
-        setStartStreet(start);
-        setEndStreet(end);
-        setStreetsToDraw([start[0].name.toLowerCase()]);
-        setIsLoading(false);
-
-        // Ustaw widok mapy
-        const centerLat = (start[0].path[0][1] + end[0].path[0][1]) / 2;
-        const centerLng = (start[0].path[0][0] + end[0].path[0][0]) / 2;
-
-        setViewState(prev => ({
-            ...prev,
-            latitude: centerLat,
-            longitude: centerLng,
-            zoom: 14,
-            transitionDuration: 1000
-        }));
     };
 
     // Dodaj tę funkcję przed isRouteExists
@@ -500,6 +598,26 @@ const NavigationGame = ({
         return bestRoute;
     };
 
+    const handleDragEnd = (event) => {
+        const { active, over } = event;
+        
+        if (active.id !== over.id) {
+            setSelectedStreets((items) => {
+                const oldIndex = items.indexOf(active.id);
+                const newIndex = items.indexOf(over.id);
+                
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        }
+    };
+
+    // Cleanup przy odmontowaniu komponentu
+    useEffect(() => {
+        return () => {
+            stopLoader();
+        };
+    }, []);
+
     return (
         <div className="flex flex-col gap-4 w-full max-w-xl p-4">
             {/* Game header */}
@@ -517,7 +635,13 @@ const NavigationGame = ({
             </div>
 
             {/* Challenge section */}
-            <div className="bg-base-100 rounded-lg p-4 shadow-lg">
+            <div className="bg-base-100 rounded-lg p-4 shadow-lg relative">
+                {isGenerating && (
+                    <div className="absolute inset-0 bg-base-100/80 flex items-center justify-center rounded-lg z-10">
+                        <div className="loading loading-spinner loading-lg text-primary"></div>
+                    </div>
+                )}
+
                 <h2 className="text-lg font-medium mb-4">
                     Navigate from{" "}
                     <span className="text-success font-bold">{startStreet && startStreet[0].name}</span>
@@ -528,29 +652,40 @@ const NavigationGame = ({
                 {/* Route display */}
                 <div className="mb-4">
                     <div className="text-sm opacity-60 mb-2">Your route:</div>
-                    <div className="flex flex-wrap gap-2 items-center">
-                        <div className="badge bg-success/20 text-success border-success">
-                            {startStreet && startStreet[0].name}
+                    <div className="flex items-center flex-wrap gap-y-2">
+                        <div className="badge bg-success/20 text-success border-success max-w-[200px] overflow-hidden">
+                            <span className="truncate">
+                                {startStreet && startStreet[0].name}
+                            </span>
                         </div>
-                        {selectedStreets.map((street, index) => (
-                            <div key={index} className="flex items-center">
-                                <div className="text-base-content opacity-50 mx-1">→</div>
-                                <div className="badge bg-primary/20 text-primary border-primary flex gap-2">
-                                    {street}
-                                    <button
-                                        onClick={() => handleRemoveStreet(index)}
-                                        className="hover:text-error"
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                        >
+                            <SortableContext
+                                items={selectedStreets}
+                                strategy={horizontalListSortingStrategy}
+                            >
+                                {selectedStreets.map((street, index) => (
+                                    <SortableStreet
+                                        key={street}
+                                        street={street}
+                                        index={index}
+                                        onRemove={handleRemoveStreet}
+                                    />
+                                ))}
+                            </SortableContext>
+                        </DndContext>
+
                         {selectedStreets.length > 0 && (
                             <>
-                                <div className="text-base-content opacity-50 mx-1">→</div>
-                                <div className="badge bg-error/20 text-error border-error">
-                                    {endStreet && endStreet[0].name}
+                                <div className="text-base-content opacity-50 mx-1 flex-shrink-0">→</div>
+                                <div className="badge bg-error/20 text-error border-error max-w-[200px] overflow-hidden">
+                                    <span className="truncate">
+                                        {endStreet && endStreet[0].name}
+                                    </span>
                                 </div>
                             </>
                         )}
@@ -616,23 +751,27 @@ const NavigationGame = ({
                     <button
                         className="btn btn-ghost btn-sm"
                         onClick={getHint}
-                        disabled={!route || showHint}
+                        disabled={!route || showHint || isGenerating}
                     >
                         Get Hint
                     </button>
                     <button
                         className="btn btn-primary btn-sm"
                         onClick={() => checkAnswer()}
-                        disabled={selectedStreets.length === 0}
+                        disabled={selectedStreets.length === 0 || isGenerating}
                     >
                         Check Route
                     </button>
                     <button
                         className="btn btn-secondary btn-sm"
                         onClick={generateNewChallenge}
-                        disabled={isLoading}
+                        disabled={isGenerating}
                     >
-                        New Challenge
+                        {isGenerating ? (
+                            <span className="loading loading-spinner loading-sm"></span>
+                        ) : (
+                            'New Challenge'
+                        )}
                     </button>
                 </div>
             </div>
