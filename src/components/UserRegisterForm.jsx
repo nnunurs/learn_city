@@ -9,10 +9,10 @@ import { UserGoogleLogin } from "./UserGoogleLogin";
 import { getErrorMessages } from "../scripts/scripts";
 
 export const UserRegisterForm = ({
-  setShowLogin,
+  setIsLoginView,
   setUserRef,
   setUser,
-  setNick,
+  setNickname,
 }) => {
   const [serverError, setServerError] = useState(null);
 
@@ -104,7 +104,7 @@ export const UserRegisterForm = ({
         <UserGoogleLogin setUser={setUser} setUserRef={setUserRef} />
         <Button
           className="mt-2"
-          onClick={() => setShowLogin(true)}
+          onClick={() => setIsLoginView(true)}
           variant="link"
         >
           Masz już konto? Zaloguj się

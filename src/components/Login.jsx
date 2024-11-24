@@ -21,8 +21,8 @@ import { signOut } from "firebase/auth";
 
 export const Login = ({ setUserRef, children }) => {
   const [user, setUser] = useState();
-  const [nick, setNick] = useState("");
-  const [showLogin, setShowLogin] = useState(false);
+  const [nickname, setNickname] = useState("");
+  const [isLoginView, setIsLoginView] = useState(false);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const btnRef = useRef();
@@ -42,9 +42,24 @@ export const Login = ({ setUserRef, children }) => {
       {children ? (
         children(onOpen)
       ) : (
-        <div className="avatar" onClick={onOpen} title="Zarządzaj kontem">
-          <div className="w-10 rounded-full">
-            <img className={""} src={user?.photoURL} alt="avatar" ref={btnRef} />
+        <div className="avatar cursor-pointer flex items-center justify-center" onClick={onOpen} title={user ? "Zarządzaj kontem" : "Zaloguj się"}>
+          <div className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center ${!user && 'glass p-2.5'}`}>
+            {user ? (
+              user.photoURL ? (
+                <img
+                  className="w-full h-full object-cover min-w-full min-h-full"
+                  src={user.photoURL}
+                  alt={user.displayName || nickname || 'Avatar użytkownika'}
+                  ref={btnRef}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-primary text-white text-lg uppercase">
+                  {(user.displayName?.[0] || nickname?.[0] || 'U')}
+                </div>
+              )
+            ) : (
+              <FaUser className="text-base-content w-full h-full" />
+            )}
           </div>
         </div>
       )}
@@ -66,7 +81,7 @@ export const Login = ({ setUserRef, children }) => {
                   src={user.photoURL}
                   alt="avatar"
                 />
-                {user.displayName ? user.displayName : nick}
+                {user.displayName ? user.displayName : nickname}
               </DrawerHeader>
               <DrawerBody className="flex justify-center">
                 <Button onClick={handleSignOut}>Wyloguj się</Button>
@@ -74,15 +89,15 @@ export const Login = ({ setUserRef, children }) => {
             </div>
           ) : (
             <div>
-              {showLogin ? (
+              {isLoginView ? (
                 <div className="flex flex-col">
                   <DrawerHeader>Logowanie</DrawerHeader>
                   <DrawerBody>
                     <UserLoginForm
                       setUser={setUser}
                       setUserRef={setUserRef}
-                      setShowLogin={setShowLogin}
-                      setNick={setNick}
+                      setIsLoginView={setIsLoginView}
+                      setNickname={setNickname}
                     />
                   </DrawerBody>
                 </div>
@@ -91,10 +106,10 @@ export const Login = ({ setUserRef, children }) => {
                   <DrawerHeader>Rejestracja</DrawerHeader>
                   <DrawerBody>
                     <UserRegisterForm
-                      setShowLogin={setShowLogin}
+                      setIsLoginView={setIsLoginView}
                       setUserRef={setUserRef}
                       setUser={setUser}
-                      setNick={setNick}
+                      setNickname={setNickname}
                     />
                   </DrawerBody>
                 </div>

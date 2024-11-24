@@ -11,8 +11,8 @@ import { getErrorMessages } from "../scripts/scripts";
 export const UserLoginForm = ({
   setUser,
   setUserRef,
-  setShowLogin,
-  setNick,
+  setIsLoginView,
+  setNickname,
 }) => {
   const [serverError, setServerError] = useState(null);
   const {
@@ -36,7 +36,7 @@ export const UserLoginForm = ({
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach((doc) => {
         setUserRef(doc.id);
-        setNick(doc.data().nick);
+        setNickname(doc.data().nick);
       });
 
       setUser(userCredential.user);
@@ -85,7 +85,7 @@ export const UserLoginForm = ({
         <UserGoogleLogin setUser={setUser} setUserRef={setUserRef} />
         <Button
           className="mt-2"
-          onClick={() => setShowLogin(false)}
+          onClick={() => setIsLoginView(false)}
           variant="link"
         >
           Nie masz konta? Zarejestruj się

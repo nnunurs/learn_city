@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { FaFlag } from "react-icons/fa";
+import { FaFlag, FaRoute, FaMapMarkerAlt } from "react-icons/fa";
 import { Login } from "./Login";
 import Quiz from "./Quiz";
 import PropTypes from "prop-types";
 import CityPicker from "./CityPicker";
+import NavigationGame from "./NavigationGame";
 
 function ControlPanel({
     getRandomStreet,
@@ -20,84 +21,92 @@ function ControlPanel({
     quizEnabled,
     streetsToDraw,
     setStreetsToDraw,
-    isDivisionsView
+    isDivisionsView,
+    setLayers,
+    setMarkers,
+    setPathData,
+    setViewState,
+    gameMode,
+    setGameMode
 }) {
     useEffect(() => {
         console.log(quizEnabled, division, streets, currentStreet)
     }, [quizEnabled]);
 
     return (
-        <div className="glass right-5 top-5 z-10 m-5 flex w-screen flex-col rounded-md p-4 md:w-fit lg:w-fit">
-            {visible && hovered && (
-                <div
-                    className="glass fixed z-10 rounded-md p-2 text-lg"
-                    style={{
-                        left: hovered.x + 20,
-                        top: hovered.y + 20,
-                        pointerEvents: "none",
-                    }}
-                >
-                    {name}
+        <div className="absolute top-0 right-0 z-10 p-4 flex flex-col gap-4">
+            {!userRef ? (
+                <div className="flex flex-col gap-2">
+                    <p className="text-center">Zaloguj sie by zagrać</p>
+                    <Login setUserRef={setUserRef}>
+                        {(onOpen) => (
+                            <button
+                                onClick={onOpen}
+                                className="btn btn-primary"
+                            >
+                                Zaloguj
+                            </button>
+                        )}
+                    </Login>
                 </div>
-            )}
-            <div className="flex flex-col gap-2">
-                {!userRef && (
-                    <div className="flex flex-col gap-2">
-                        <p className="text-center">Zaloguj sie by zagrać</p>
-                        <Login setUserRef={setUserRef}>
-                            {(onOpen) => (
-                                <button
-                                    className="btn shadow-sm"
-                                    onClick={onOpen}
-                                >
-                                    Zaloguj
-                                </button>
-                            )}
-                        </Login>
+            ) : (
+                <>
+                    <div className="glass bg-base-100 bg-opacity-90 rounded-lg px-4 py-2 flex items-center gap-4 justify-end">
+                        <button
+                            onClick={enableDivisionsView}
+                            className="btn btn-ghost btn-sm"
+                            title="Zmień dzielnicę"
+                        >
+                            <span className="font-bold">{division.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")}</span>
+                            Zmień dzielnicę
+                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setGameMode("navigation")}
+                                className={`btn btn-sm ${gameMode === "navigation" ? "btn-primary" : "btn-ghost"}`}
+                                title="Navigation Challenge"
+                            >
+                                <FaRoute className="inline mr-1" /> Navigation
+                            </button>
+                            <button
+                                onClick={() => setGameMode("quiz")}
+                                className={`btn btn-sm ${gameMode === "quiz" ? "btn-primary" : "btn-ghost"}`}
+                                title="Street Quiz"
+                            >
+                                <FaMapMarkerAlt className="inline mr-1" /> Quiz
+                            </button>
+                        </div>
+                        <Login setUserRef={setUserRef} />
                     </div>
-                )}
-                {userRef && (
-                    <p className="font-bold text-xl">
-                        {!isDivisionsView
-                            ? division
-                                .split("_")
-                                .map(
-                                    (word) =>
-                                        word.charAt(0).toUpperCase() + word.slice(1),
-                                )
-                                .join(" ")
-                            : "Wybierz dzielnicę"}
-                    </p>)}
-                {quizEnabled && (<div className="flex justify-center gap-4">
-                    <button
-                        className="btn shadow-sm"
-                        onClick={focusOnStreet}
-                        title="Wróc do ulicy"
-                    >
-                        <FaFlag />
-                    </button>
-                    <button
-                        className="btn shadow-sm"
-                        onClick={enableDivisionsView}
-                        title="Zmień dzielnicę"
-                    >
-                        Zmień dzielnicę
-                    </button>
-                    <Login setUserRef={setUserRef} />
-                </div>
-                )}
-                {quizEnabled && division && streets && currentStreet && (
-                    <Quiz
-                        correct={currentStreet[0].name}
-                        streets={streets}
-                        streetsToDraw={streetsToDraw}
-                        setStreetsToDraw={setStreetsToDraw}
-                        newStreet={getRandomStreet}
-                        division={division}
-                        userRef={userRef}
-                    />
-                )}
-            </div>
+                    {division && streets && (
+                        <div className="glass bg-base-100 bg-opacity-90 rounded-lg p-4">
+                            {gameMode === "quiz" && quizEnabled ? (
+                                <Quiz
+                                    correct={currentStreet[0].name}
+                                    streets={streets}
+                                    streetsToDraw={streetsToDraw}
+                                    setStreetsToDraw={setStreetsToDraw}
+                                    newStreet={getRandomStreet}
+                                    division={division}
+                                    userRef={userRef}
+                                />
+                            ) : gameMode === "navigation" ? (
+                                <NavigationGame
+                                    streets={streets}
+                                    division={division}
+                                    userRef={userRef}
+                                    setStreetsToDraw={setStreetsToDraw}
+                                    setLayers={setLayers}
+                                    focusOnStreet={focusOnStreet}
+                                    setMarkers={setMarkers}
+                                    setPathData={setPathData}
+                                    setViewState={setViewState}
+                                />
+                            ) : null}
+                        </div>
+                    )}
+                </>
+            )}
         </div>
     );
 }
@@ -116,11 +125,18 @@ ControlPanel.propTypes = {
     enableDivisionsView: PropTypes.func.isRequired,
     currentStreet: PropTypes.array,
     streets: PropTypes.object,
-    userRef: PropTypes.string,
+    userRef: PropTypes.object,
     setUserRef: PropTypes.func.isRequired,
-    quizEnabled: PropTypes.bool.isRequired,
-    streetsToDraw: PropTypes.array.isRequired,
-    setStreetsToDraw: PropTypes.func.isRequired
+    quizEnabled: PropTypes.bool,
+    streetsToDraw: PropTypes.array,
+    setStreetsToDraw: PropTypes.func.isRequired,
+    isDivisionsView: PropTypes.bool,
+    setLayers: PropTypes.func.isRequired,
+    setMarkers: PropTypes.func.isRequired,
+    setPathData: PropTypes.func.isRequired,
+    setViewState: PropTypes.func.isRequired,
+    gameMode: PropTypes.string,
+    setGameMode: PropTypes.func.isRequired,
 };
 
 export default ControlPanel;

@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
 import { FlyToInterpolator } from "deck.gl";
-import { PathLayer, PolygonLayer, ScatterplotLayer } from "@deck.gl/layers";
+import { PathLayer, PolygonLayer } from "@deck.gl/layers";
 import krakowStreets from "../data/krakow_divisions.json";
 import krakowDivisions from "../data/krakow_divisions_filtered.json";
 import zakopaneStreets from "../data/zakopane_streets.json";
 import {
-    clamp,
-    filterObj,
     findIndexByName,
     weightedRandom,
 } from "../scripts/scripts";
@@ -15,6 +12,8 @@ import changelog from "../changelog.json";
 import { Changelog } from "./Changelog";
 import MapComponent from "./MapComponent";
 import ControlPanel from "./ControlPanel";
+import NavigationGame from "./NavigationGame";
+import ErrorBoundary from "./ErrorBoundary";
 
 const center = {
     krakow: [50.06168144356519, 19.937328289497746],
@@ -34,7 +33,7 @@ function MapGuess() {
     const [currentStreet, setCurrentStreet] = useState([{ name: "loading", path: [[0, 0]] }]);
     const [city, setCity] = useState("krakow");
     const [division, setDivision] = useState("stare_miasto");
-    const [isDivisionsView, setDivisionsView] = useState(false);
+    const [isDivisionsView, setIsDivisionsView] = useState(false);
     const [layers, setLayers] = useState([]);
     const [hovered, setHovered] = useState(null);
     const [visible, setVisible] = useState(false);
@@ -42,23 +41,10 @@ function MapGuess() {
     const [isControllerEnabled, setControllerEnabled] = useState(true);
     const [userRef, setUserRef] = useState(null);
     const [quizEnabled, setQuizEnabled] = useState(false);
+    const [markers, setMarkers] = useState([]);
+    const [pathData, setPathData] = useState([]);
+    const [gameMode, setGameMode] = useState('quiz');
 
-    const cleanCookies = () => {
-        const new_score = Object.keys(krakowStreets).reduce(
-            (o, key) => ({
-                ...o,
-                [key]: { correct: 0, wrong: 0, known: [], mistakes: [] },
-            }),
-            {},
-        );
-
-        setCookie("score", {
-            krakow: new_score,
-            zakopane: {
-                zakopane: { correct: 0, wrong: 0, known: [], mistakes: [] },
-            },
-        });
-    };
 
     useEffect(() => {
         if (userRef) {
@@ -251,7 +237,7 @@ function MapGuess() {
 
                         setDivision(divisionId);
                         setStreetsToDraw([]);
-                        setDivisionsView(false);
+                        setIsDivisionsView(false);
                         setStreets(krakowStreets[divisionId]);
                     }
                 }
@@ -267,42 +253,40 @@ function MapGuess() {
         });
     };
 
-    const handleDivisionViewEnabled = () => {
-        setDivisionsView(true);
+    const handleEnableDivisionsView = () => {
+        setIsDivisionsView(true);
         enableDivisionsView();
     };
 
     return (
-        <div className="flex h-screen w-screen items-end justify-center sm:items-start sm:justify-end">
-            <div className="">
-                {visible && hovered && (
-                    <div
-                        className="glass fixed z-10 rounded-md p-2 text-lg"
-                        style={{
-                            left: hovered.x + 20,
-                            top: hovered.y + 20,
-                            pointerEvents: "none",
-                        }}
-                    >
-                        {name}
-                    </div>
-                )}
-                <MapComponent
-                    viewState={viewState}
-                    setViewState={setViewState}
-                    layers={layers}
-                    isControllerEnabled={isControllerEnabled}
-                />
-            </div>
+        <div className="relative w-full h-screen">
+            <MapComponent
+                viewState={viewState}
+                setViewState={setViewState}
+                layers={layers}
+                isControllerEnabled={isControllerEnabled}
+                markers={markers}
+                pathData={pathData}
+            />
+            {visible && (
+                <div
+                    className="absolute z-10 pointer-events-none glass rounded-lg shadow-lg p-4"
+                    style={{
+                        left: hovered.x + 15,
+                        top: hovered.y + 15,
+                    }}
+                >
+                    <div className="text-md font-medium">{name}</div>
+                </div>
+            )}
             <ControlPanel
+                getRandomStreet={getRandomStreet}
                 visible={visible}
                 hovered={hovered}
                 name={name}
-                city={city}
                 division={division}
-                cleanCookies={cleanCookies}
-                getRandomStreet={getRandomStreet}
                 focusOnStreet={focusOnStreet}
+                enableDivisionsView={handleEnableDivisionsView}
                 currentStreet={currentStreet}
                 streets={streets}
                 userRef={userRef}
@@ -310,9 +294,13 @@ function MapGuess() {
                 quizEnabled={quizEnabled}
                 streetsToDraw={streetsToDraw}
                 setStreetsToDraw={setStreetsToDraw}
-                setCity={setCity}
                 isDivisionsView={isDivisionsView}
-                enableDivisionsView={handleDivisionViewEnabled}
+                setLayers={setLayers}
+                setMarkers={setMarkers}
+                setPathData={setPathData}
+                setViewState={setViewState}
+                gameMode={gameMode}
+                setGameMode={setGameMode}
             />
             <Changelog
                 version={changelog.version}
