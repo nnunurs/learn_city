@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Fuse from 'fuse.js';
 import PropTypes from 'prop-types';
-import { 
-    DndContext, 
+import {
+    DndContext,
     closestCenter,
     KeyboardSensor,
     PointerSensor,
@@ -34,16 +34,16 @@ const SortableStreet = ({ street, index, onRemove }) => {
 
     return (
         <div className="flex items-center flex-shrink-0">
-            <div 
-                ref={setNodeRef} 
-                style={style} 
-                {...attributes} 
+            <div
+                ref={setNodeRef}
+                style={style}
+                {...attributes}
                 {...listeners}
                 className="flex items-center"
             >
                 <div className="text-base-content opacity-50 mx-1 flex-shrink-0">→</div>
                 <div className="badge bg-primary/20 text-primary border-primary flex gap-2 max-w-[200px] overflow-hidden">
-                    <span className="truncate">{street}</span>
+                    <span className="truncate">{street.split(" ").map(word => word[0].toUpperCase() + word.slice(1)).join(" ")}</span>
                 </div>
             </div>
             <button
@@ -67,20 +67,21 @@ const NavigationGame = ({
 }) => {
     const [startStreet, setStartStreet] = useState(null);
     const [endStreet, setEndStreet] = useState(null);
-    const [route, setRoute] = useState(null);
     const [searchInput, setSearchInput] = useState("");
     const [searchResults, setSearchResults] = useState([]);
     const [selectedStreets, setSelectedStreets] = useState([]);
     const [isCorrect, setIsCorrect] = useState(null);
     const [score, setScore] = useState(0);
     const [streak, setStreak] = useState(0);
-    const [showHint, setShowHint] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [feedback, setFeedback] = useState("");
     const inputRef = useRef(null);
     const fuseRef = useRef(null);
     const loadingRef = useRef(null);
+    const [routeStats, setRouteStats] = useState(null);
+    const [optimalRoute, setOptimalRoute] = useState(null);
+    const [fullUserRoute, setFullUserRoute] = useState(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -248,58 +249,60 @@ const NavigationGame = ({
             return;
         }
 
-        // Sprawdź czy wybrane ulice tworzą spójną trasę
-        let isValidPath = true;
-        let currentStreet = startStreet;
-
-        // Sprawdź połączenia między kolejnymi ulicami
-        for (const streetName of selectedStreets) {
-            const nextStreetSegments = Object.values(streets).flat().filter(
-                s => s.name.toLowerCase() === streetName.toLowerCase()
-            );
-
-            if (nextStreetSegments.length === 0) {
-                isValidPath = false;
-                break;
+        // Oblicz długość trasy użytkownika
+        let userRouteLength = 0;
+        for (let i = 0; i < selectedStreets.length - 1; i++) {
+            const currentStreet = streets[selectedStreets[i].toLowerCase()];
+            const nextStreet = streets[selectedStreets[i + 1].toLowerCase()];
+            if (currentStreet && nextStreet) {
+                // Weź ostatni punkt obecnej ulicy i pierwszy punkt następnej
+                const point1 = currentStreet[0].path[currentStreet[0].path.length - 1];
+                const point2 = nextStreet[0].path[0];
+                userRouteLength += calculateDistance(point1, point2);
             }
+        }
 
-            // Sprawdź czy ulice są połączone
-            if (!areStreetsConnected(currentStreet, nextStreetSegments, streets)) {
-                isValidPath = false;
-                break;
+        // Znajdź optymalną trasę
+        const worker = new Worker(new URL('../workers/routeWorker.js', import.meta.url));
+
+        worker.onmessage = (e) => {
+            if (e.data.success) {
+                const { stats, route, userRoute } = e.data;
+                setRouteStats(stats);
+                setOptimalRoute(route);
+                setFullUserRoute(userRoute);
+                
+                // Ocena trasy na podstawie stosunku długości
+                if (stats.lengthRatio <= 110) { // max 10% dłuższa
+                    setFeedback("Perfect route! Very efficient!");
+                    setScore(score + 2);
+                } else if (stats.lengthRatio <= 130) { // max 30% dłuższa
+                    setFeedback("Good route! Could be a bit shorter.");
+                    setScore(score + 1);
+                } else {
+                    setFeedback("Valid route, but there's a much shorter path.");
+                }
+                
+                setIsCorrect(true);
+                setStreak(streak + 1);
+                setStreetsToDraw(selectedStreets);
+            } else {
+                setFeedback(e.data.error);
+                setIsCorrect(false);
+                setStreak(0);
+                setRouteStats(null);
+                setOptimalRoute(null);
+                setFullUserRoute(null);
             }
+            worker.terminate();
+        };
 
-            currentStreet = nextStreetSegments;
-        }
-
-        // Sprawdź połączenie z ulicą końcową
-        if (!areStreetsConnected(currentStreet, endStreet, streets)) {
-            isValidPath = false;
-        }
-
-        if (isValidPath) {
-            setScore(score + 1);
-            setStreak(streak + 1);
-            setFeedback("Correct! You found a valid route!");
-            setIsCorrect(true);
-
-            // Pokaż całą trasę
-            setStreetsToDraw([
-                startStreet[0].name.toLowerCase(),
-                ...selectedStreets,
-                endStreet[0].name.toLowerCase()
-            ]);
-
-            // Generuj nowe wyzwanie po krótkim opóźnieniu
-            setTimeout(() => {
-                setIsLoading(true);
-                generateNewChallenge();
-            }, 2000);
-        } else {
-            setStreak(0);
-            setFeedback("This route is not valid. Streets must be connected!");
-            setIsCorrect(false);
-        }
+        worker.postMessage({
+            start: startStreet,
+            end: endStreet,
+            streets: streets,
+            selectedStreets: selectedStreets
+        });
     };
 
     // Funkcja do animacji loadera
@@ -318,85 +321,61 @@ const NavigationGame = ({
         console.log('Starting generation...');
         setIsGenerating(true);
         setIsLoading(true);
-        
-        try {
-            // Dodaj małe opóźnienie, aby upewnić się, że stan się zaktualizował
-            await new Promise(resolve => setTimeout(resolve, 100));
 
-            // Najpierw znajdź odpowiednie ulice
+        try {
             const streetEntries = Object.entries(streets);
             const startIndex = Math.floor(Math.random() * streetEntries.length);
             const start = streetEntries[startIndex][1];
 
-            // Stwórz tablicę indeksów do losowego przeszukiwania
-            const indices = Array.from({ length: streetEntries.length }, (_, i) => i)
-                .filter(i => i !== startIndex); // Usuń indeks ulicy startowej
-            
-            let end = null;
-            let attempts = 0;
-            const maxAttempts = 10;
+            const worker = new Worker(new URL('../workers/streetWorker.js', import.meta.url));
 
-            // Losowo przemieszaj indeksy
-            for (let i = indices.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [indices[i], indices[j]] = [indices[j], indices[i]];
-            }
+            const result = await new Promise((resolve, reject) => {
+                worker.onmessage = (e) => {
+                    if (e.data.type === 'progress') {
+                        console.log(`Searching... Attempts: ${e.data.attempts}`);
+                        return;
+                    }
 
-            // Szukaj odpowiedniej pary ulic
-            for (const index of indices) {
-                if (attempts >= maxAttempts) break;
-                attempts++;
+                    if (e.data.success) {
+                        resolve(e.data);
+                    } else {
+                        reject(new Error(e.data.error));
+                    }
+                };
 
-                const potentialEnd = streetEntries[index][1];
-                
-                // Szybkie sprawdzenie nazwy przed kosztownymi obliczeniami
-                if (potentialEnd[0].name === start[0].name) continue;
+                worker.onerror = (error) => {
+                    reject(error);
+                };
 
-                console.log(`Attempt ${attempts}: Checking ${start[0].name} -> ${potentialEnd[0].name}`);
-                
-                // Najpierw sprawdź czy istnieje trasa (mniej kosztowne)
-                const hasRoute = isRouteExists(start, potentialEnd, Object.values(streets));
-                if (!hasRoute) continue;
+                // Wyślij dane do workera bez parametrów trudności
+                worker.postMessage({ start, streets });
+            });
 
-                // Potem sprawdź czy nie są bezpośrednio połączone (bardziej kosztowne)
-                const isDirectlyConnected = areStreetsConnected(start, potentialEnd, streets);
-                if (!isDirectlyConnected) {
-                    end = potentialEnd;
-                    break;
-                }
+            worker.terminate();
 
-                // Małe opóźnienie między próbami, aby nie blokować UI
-                if (attempts % 2 === 0) {
-                    await new Promise(resolve => setTimeout(resolve, 10));
-                }
-            }
-
-            if (!end) {
+            if (!result.result) {
                 console.log('Failed to find valid pair');
                 setIsGenerating(false);
                 setIsLoading(false);
                 return;
             }
 
-            console.log('Found valid pair, setting up new challenge...');
+            const end = result.result;
+            console.log(`Found valid pair after ${result.attempts} attempts`);
 
-            // Czyść stany i ustaw nowe wartości w jednej partii
-            const updates = () => {
-                setSelectedStreets([]);
-                setSearchInput("");
-                setSearchResults([]);
-                setIsCorrect(null);
-                setFeedback("");
-                setShowHint(false);
-                setPathData([]);
-                setMarkers([]);
-                setStartStreet(start);
-                setEndStreet(end);
-                setStreetsToDraw([start[0].name.toLowerCase()]);
-            };
-            updates();
+            // Aktualizuj stany
+            setSelectedStreets([]);
+            setSearchInput("");
+            setSearchResults([]);
+            setIsCorrect(null);
+            setFeedback("");
+            setPathData([]);
+            setMarkers([]);
+            setStartStreet(start);
+            setEndStreet(end);
+            setStreetsToDraw([start[0].name.toLowerCase()]);
 
-            // Oblicz centrum widoku
+            // Ustaw widok mapy
             const centerLat = (start[0].path[0][1] + end[0].path[0][1]) / 2;
             const centerLng = (start[0].path[0][0] + end[0].path[0][0]) / 2;
 
@@ -408,9 +387,8 @@ const NavigationGame = ({
                 transitionDuration: 1000
             }));
 
-            // Poczekaj na zakończenie animacji
             await new Promise(resolve => setTimeout(resolve, 1000));
-            
+
             console.log('Generation complete');
             setIsGenerating(false);
             setIsLoading(false);
@@ -420,71 +398,6 @@ const NavigationGame = ({
             setIsGenerating(false);
             setIsLoading(false);
         }
-    };
-
-    // Dodaj tę funkcję przed isRouteExists
-    const findNearbyStreets = (street, allStreets) => {
-        if (!street || !allStreets) return [];
-
-        console.log(`Finding nearby streets for ${street[0].name}`);
-
-        return allStreets.filter(otherStreet => {
-            // Nie sprawdzaj połączenia z tą samą ulicą
-            if (otherStreet[0].name === street[0].name) return false;
-
-            const isConnected = areStreetsConnected(street, otherStreet);
-
-            if (isConnected) {
-                console.log(`Found connection: ${street[0].name} -> ${otherStreet[0].name}`);
-            }
-
-            return isConnected;
-        });
-    };
-
-    // Funkcja sprawdzająca czy istnieje jakakolwiek trasa
-    const isRouteExists = (start, end, allStreets, maxDepth = 5) => {
-        const visited = new Set();
-
-        const dfs = (current, depth = 0) => {
-            if (depth > maxDepth) return false;
-
-            const currentName = current[0].name.toLowerCase();
-            if (currentName === end[0].name.toLowerCase()) return true;
-
-            visited.add(currentName);
-
-            const neighbors = findNearbyStreets(current, allStreets);
-            for (const neighbor of neighbors) {
-                const neighborName = neighbor[0].name.toLowerCase();
-                if (!visited.has(neighborName)) {
-                    if (dfs(neighbor, depth + 1)) return true;
-                }
-            }
-
-            return false;
-        };
-
-        return dfs(start);
-    };
-
-    const getHint = () => {
-        if (!route || route.length < 2) return;
-
-        // If no answer yet, show the first intermediate street
-        if (!selectedStreets.length) {
-            setFeedback(`Hint: The first street after ${startStreet[0].name} is ${route[1]}`);
-        } else {
-            // Find the next street in the route after the last correct street
-            const lastCorrectIndex = selectedStreets.reduce((acc, street, index) => {
-                return street === route[index] ? index : acc;
-            }, -1);
-
-            if (lastCorrectIndex >= 0 && lastCorrectIndex < route.length - 1) {
-                setFeedback(`Hint: After ${route[lastCorrectIndex]}, try ${route[lastCorrectIndex + 1]}`);
-            }
-        }
-        setShowHint(true);
     };
 
     // Helper function to calculate distance between two points
@@ -600,12 +513,12 @@ const NavigationGame = ({
 
     const handleDragEnd = (event) => {
         const { active, over } = event;
-        
+
         if (active.id !== over.id) {
             setSelectedStreets((items) => {
                 const oldIndex = items.indexOf(active.id);
                 const newIndex = items.indexOf(over.id);
-                
+
                 return arrayMove(items, oldIndex, newIndex);
             });
         }
@@ -746,15 +659,43 @@ const NavigationGame = ({
                     </div>
                 )}
 
+                {/* Statystyki trasy */}
+                {isCorrect && routeStats && (
+                    <div className="bg-base-100 rounded-lg p-4 shadow-lg">
+                        <h3 className="text-lg font-bold mb-2">Route Statistics</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <div className="text-sm opacity-60">Your Route</div>
+                                <div className="font-bold">{routeStats.userRouteLength}m</div>
+                                <div className="text-sm opacity-60">Streets used: {routeStats.userStreetCount}</div>
+                                {fullUserRoute && (
+                                    <div className="text-sm mt-1 opacity-80">
+                                        {fullUserRoute.join(' → ')}
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <div className="text-sm opacity-60">Optimal Route</div>
+                                <div className="font-bold">{routeStats.optimalRouteLength}m</div>
+                                <div className="text-sm opacity-60">Streets used: {routeStats.optimalStreetCount}</div>
+                                {optimalRoute && (
+                                    <div className="text-sm mt-1 opacity-80">
+                                        {optimalRoute.join(' → ')}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="col-span-2">
+                                <div className="text-sm opacity-60">Difference</div>
+                                <div className={`font-bold ${routeStats.lengthRatio <= 110 ? 'text-success' : routeStats.lengthRatio <= 130 ? 'text-warning' : 'text-error'}`}>
+                                    +{routeStats.lengthDifference}m ({routeStats.lengthRatio}% of optimal)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Controls */}
                 <div className="flex justify-end gap-2 mt-4">
-                    <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={getHint}
-                        disabled={!route || showHint || isGenerating}
-                    >
-                        Get Hint
-                    </button>
                     <button
                         className="btn btn-primary btn-sm"
                         onClick={() => checkAnswer()}
