@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import DeckGL from "deck.gl";
 import Map from "react-map-gl";
-import { ScatterplotLayer, PathLayer } from '@deck.gl/layers';
+import { ScatterplotLayer, PathLayer, PolygonLayer } from '@deck.gl/layers';
 
 const center = {
   krakow: [50.06168144356519, 19.937328289497746],
@@ -15,7 +15,24 @@ const initialViewState = {
   controller: true,
 };
 
-function MapComponent({ viewState, setViewState, layers, isControllerEnabled, markers, pathData }) {
+function MapComponent({ viewState, setViewState, layers, isControllerEnabled, markers, pathData, optimalPathData, quizPathData, onDivisionHover, onDivisionClick, divisionsData }) {
+  const getColor = (color) => {
+    switch (color) {
+        case "selected":
+            return [205, 39, 217];
+        case "darkgreen":
+            return [51, 114, 120];
+        case "green":
+            return [64, 160, 115];
+        case "red":
+            return [214, 60, 69];
+        case "yellow":
+            return [255, 148, 38];
+        default:
+            return [79, 100, 255];
+    }
+};
+
   const markerLayer = new ScatterplotLayer({
     id: 'markers',
     data: markers || [],
@@ -36,12 +53,68 @@ function MapComponent({ viewState, setViewState, layers, isControllerEnabled, ma
   const pathLayer = new PathLayer({
     id: 'path-layer',
     data: pathData || [],
+    getWidth: d => d.width,
+    capRounded: true,
+    jointRounded: true,
+    getColor: d => d.color,
+    widthMinPixels: 3
+  });
+
+  const optimalPathLayer = new PathLayer({
+    id: 'optimal-path-layer',
+    data: optimalPathData || [],
     pickable: true,
     widthScale: 1,
     widthMinPixels: 2,
     getPath: d => d.path,
     getColor: d => d.color,
-    getWidth: d => d.width
+    getWidth: d => d.width,
+    getDashArray: () => [20, 10],
+    dashJustified: true,
+    capRounded: true,
+    jointRounded: true
+  });
+
+  const quizPathLayer = new PathLayer({
+    id: 'quiz-path-layer',
+    data: quizPathData || [],
+    pickable: true,
+    widthScale: 1,
+    widthMinPixels: 2,
+    getPath: d => d.path,
+    getColor: d => getColor(d.color),
+    getWidth: d => (d.color === "selected" ? 7 : 5),
+    capRounded: true,
+    jointRounded: true
+  });
+
+  const divisionsLayer = new PolygonLayer({
+    id: 'divisions-layer',
+    data: divisionsData || [],
+    pickable: true,
+    stroked: true,
+    filled: true,
+    wireframe: true,
+    lineWidthMinPixels: 1,
+    getPolygon: d => d.geometry.coordinates[0],
+    getLineColor: [80, 80, 80],
+    getFillColor: [0, 0, 0, 20],
+    onHover: info => {
+      if (info.object) {
+        onDivisionHover && onDivisionHover({
+          x: info.x,
+          y: info.y,
+          name: info.object.properties.name
+        });
+      } else {
+        onDivisionHover && onDivisionHover(null);
+      }
+    },
+    onClick: info => {
+      if (info.object) {
+        onDivisionClick && onDivisionClick(info.object.properties.name);
+      }
+    }
   });
 
   return (
@@ -52,10 +125,16 @@ function MapComponent({ viewState, setViewState, layers, isControllerEnabled, ma
         controller={{
           doubleClickZoom: false,
           minZoom: 10.5,
-          maxZoom: 18,
-          ...(!isControllerEnabled && { dragPan: false, dragRotate: false }),
+          maxZoom: 18
         }}
-        layers={[...layers, pathLayer, markerLayer]}
+        layers={[
+          ...(layers || []), 
+          pathLayer, 
+          divisionsLayer, 
+          optimalPathLayer, 
+          quizPathLayer, 
+          markerLayer
+        ]}
         getCursor={() => 'pointer'}
       >
         <Map
@@ -78,6 +157,10 @@ MapComponent.propTypes = {
   setViewState: PropTypes.func.isRequired,
   layers: PropTypes.array.isRequired,
   isControllerEnabled: PropTypes.bool.isRequired,
+  markers: PropTypes.array,
+  pathData: PropTypes.array,
+  optimalPathData: PropTypes.array,
+  divisionsData: PropTypes.array
 };
 
 export default MapComponent;

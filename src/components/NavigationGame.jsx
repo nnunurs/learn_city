@@ -62,6 +62,7 @@ const NavigationGame = ({
     setStreetsToDraw,
     setMarkers,
     setPathData,
+    setOptimalPathData,
     setViewState,
     userRef
 }) => {
@@ -271,7 +272,7 @@ const NavigationGame = ({
                 setRouteStats(stats);
                 setOptimalRoute(route);
                 setFullUserRoute(userRoute);
-                
+
                 // Ocena trasy na podstawie stosunku długości
                 if (stats.lengthRatio <= 110) { // max 10% dłuższa
                     setFeedback("Perfect route! Very efficient!");
@@ -282,10 +283,36 @@ const NavigationGame = ({
                 } else {
                     setFeedback("Valid route, but there's a much shorter path.");
                 }
-                
+
                 setIsCorrect(true);
                 setStreak(streak + 1);
                 setStreetsToDraw(selectedStreets);
+
+                // Przygotuj dane dla optymalnej trasy
+                const optimalPaths = [];
+                for (const streetName of e.data.route) {
+                    const streetSegments = Object.values(streets).flat().filter(
+                        segment => segment.name.toLowerCase() === streetName.toLowerCase()
+                    );
+
+                    if (streetSegments.length > 0) {
+                        streetSegments.forEach(segment => {
+                            // Tworzymy przerywaną linię przez podział ścieżki na segmenty
+                            const path = segment.path;
+                            for (let i = 0; i < path.length - 1; i += 2) {
+                                if (i + 1 < path.length) {
+                                    optimalPaths.push({
+                                        path: [path[i], path[i + 1]],
+                                        color: [235, 195, 52],
+                                        width: 4
+                                    });
+                                }
+                            }
+                        });
+                    }
+                }
+                console.log('Setting optimal paths:', optimalPaths);
+                setOptimalPathData(optimalPaths);
             } else {
                 setFeedback(e.data.error);
                 setIsCorrect(false);
@@ -371,6 +398,7 @@ const NavigationGame = ({
             setFeedback("");
             setPathData([]);
             setMarkers([]);
+            setOptimalPathData([]);
             setStartStreet(start);
             setEndStreet(end);
             setStreetsToDraw([start[0].name.toLowerCase()]);

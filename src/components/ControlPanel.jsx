@@ -8,9 +8,6 @@ import NavigationGame from "./NavigationGame";
 
 function ControlPanel({
     getRandomStreet,
-    visible,
-    hovered,
-    name,
     division,
     focusOnStreet,
     enableDivisionsView,
@@ -22,12 +19,12 @@ function ControlPanel({
     streetsToDraw,
     setStreetsToDraw,
     isDivisionsView,
-    setLayers,
     setMarkers,
     setPathData,
     setViewState,
     gameMode,
-    setGameMode
+    setGameMode,
+    setOptimalPathData,
 }) {
     useEffect(() => {
         console.log(quizEnabled, division, streets, currentStreet)
@@ -96,11 +93,11 @@ function ControlPanel({
                                     division={division}
                                     userRef={userRef}
                                     setStreetsToDraw={setStreetsToDraw}
-                                    setLayers={setLayers}
                                     focusOnStreet={focusOnStreet}
                                     setMarkers={setMarkers}
                                     setPathData={setPathData}
                                     setViewState={setViewState}
+                                    setOptimalPathData={setOptimalPathData}
                                 />
                             ) : null}
                         </div>
@@ -131,12 +128,12 @@ ControlPanel.propTypes = {
     streetsToDraw: PropTypes.array,
     setStreetsToDraw: PropTypes.func.isRequired,
     isDivisionsView: PropTypes.bool,
-    setLayers: PropTypes.func.isRequired,
     setMarkers: PropTypes.func.isRequired,
     setPathData: PropTypes.func.isRequired,
     setViewState: PropTypes.func.isRequired,
     gameMode: PropTypes.string,
     setGameMode: PropTypes.func.isRequired,
+    setOptimalPathData: PropTypes.func.isRequired,
 };
 
 export default ControlPanel;

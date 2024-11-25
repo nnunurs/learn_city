@@ -38,12 +38,14 @@ function MapGuess() {
     const [hovered, setHovered] = useState(null);
     const [visible, setVisible] = useState(false);
     const [name, setName] = useState("");
-    const [isControllerEnabled, setControllerEnabled] = useState(true);
     const [userRef, setUserRef] = useState(null);
     const [quizEnabled, setQuizEnabled] = useState(false);
     const [markers, setMarkers] = useState([]);
     const [pathData, setPathData] = useState([]);
     const [gameMode, setGameMode] = useState('quiz');
+    const [optimalPathData, setOptimalPathData] = useState([]);
+    const [quizPathData, setQuizPathData] = useState([]);
+    const [divisionsData, setDivisionsData] = useState([]);
 
 
     useEffect(() => {
@@ -90,23 +92,14 @@ function MapGuess() {
 
         const newStreet = streets[random_street_key];
         setCurrentStreet(newStreet);
-        setLayers([
-            new PathLayer({
-                id: "path-layer",
-                data: [
-                    ...newStreet.map((e) => ({ ...e, color: "selected" })),
-                    ...streetsToDraw.map((e) =>
-                        e.name === newStreet[0].name
-                            ? { ...e, color: "selected" }
-                            : e,
-                    ),
-                ],
-                getWidth: (d) => (d.color === "selected" ? 7 : 4),
-                capRounded: true,
-                jointRounded: true,
-                getColor: (d) => getColor(d.color),
-                widthMinPixels: 3,
-            }),
+
+        setQuizPathData([
+            ...newStreet.map((e) => ({ ...e, color: "selected" })),
+            ...streetsToDraw.map((e) =>
+                e.name === newStreet[0].name
+                    ? { ...e, color: "selected" }
+                    : e,
+            ),
         ]);
         focusOnStreet(newStreet);
         setVisible(false);
@@ -116,38 +109,16 @@ function MapGuess() {
         if (!currentStreet) return;
 
         if (currentStreet[0].name !== "loading") {
-            setLayers([
-                new PathLayer({
-                    id: "path-layer",
-                    data: [
-                        ...currentStreet.map((e) => ({ ...e, color: "selected" })),
-                        ...streetsToDraw.map((e) =>
-                            e.name === currentStreet[0].name
-                                ? { ...e, color: "selected" }
-                                : e,
-                        ),
-                    ],
-                    getWidth: (d) => (d.color === "selected" ? 7 : 4),
-                    capRounded: true,
-                    jointRounded: true,
-                    getColor: (d) => getColor(d.color),
-                    widthMinPixels: 3,
-                }),
+            setQuizPathData([
+                ...currentStreet.map((e) => ({ ...e, color: "selected" })),
+                ...streetsToDraw.map((e) =>
+                    e.name === currentStreet[0].name
+                        ? { ...e, color: "selected" }
+                        : e,
+                ),
             ]);
         }
     }, [currentStreet, streetsToDraw]);
-
-    useEffect(() => {
-        if (layers.length > 0 && layers[0].id === "divisions-layer") {
-            setControllerEnabled(false);
-        } else {
-            setControllerEnabled(true);
-        }
-    }, [layers]);
-
-    useEffect(() => {
-        setControllerEnabled(true);
-    }, []);
 
     useEffect(() => {
         switch (city) {
@@ -175,74 +146,50 @@ function MapGuess() {
 
     const focusOnStreet = (streetToFocus = currentStreet) => {
         if (!streetToFocus) return;
+        console.log(streetToFocus);
+
+        const latitudes = streetToFocus.flatMap(segment => segment.path.map(point => point[1]));
+        const longitudes = streetToFocus.flatMap(segment => segment.path.map(point => point[0]));
+        
+        const centerLatitude = latitudes.reduce((a, b) => a + b) / latitudes.length;
+        const centerLongitude = longitudes.reduce((a, b) => a + b) / longitudes.length;
 
         setViewState({
-            longitude: streetToFocus[0].path[0][0],
-            latitude: streetToFocus[0].path[0][1],
+            longitude: centerLongitude,
+            latitude: centerLatitude,
             zoom: 16,
             transitionDuration: 1000,
             transitionInterpolator: new FlyToInterpolator(),
         });
     };
 
-    const getColor = (color) => {
-        switch (color) {
-            case "selected":
-                return [205, 39, 217];
-            case "darkgreen":
-                return [51, 114, 120];
-            case "green":
-                return [64, 160, 115];
-            case "red":
-                return [214, 60, 69];
-            case "yellow":
-                return [255, 148, 38];
-            default:
-                return [79, 100, 255];
+
+    const handleDivisionHover = (info) => {
+        if (info && info.object) {
+            setHovered({ x: info.x, y: info.y });
+            setName(info.object.properties.name);
+            setVisible(true);
+        } else {
+            setVisible(false);
         }
+    };
+
+    const handleDivisionClick = (divisionName) => {
+        const divisionId = divisionName.toLowerCase().replace(" ", "_");
+        setQuizEnabled(true);
+        setDivision(divisionId);
+        setStreetsToDraw([]);
+        setIsDivisionsView(false);
+        setStreets(krakowStreets[divisionId]);
+        setDivisionsData([]);
     };
 
     const enableDivisionsView = () => {
         setCity("krakow");
         setQuizEnabled(false);
-        setLayers([
-            new PolygonLayer({
-                id: 'divisions-layer',
-                data: krakowDivisions.features,
-                pickable: true,
-                stroked: true,
-                filled: true,
-                wireframe: true,
-                lineWidthMinPixels: 1,
-                getPolygon: d => d.geometry.coordinates[0],
-                getLineColor: [80, 80, 80],
-                getFillColor: [0, 0, 0, 20],
-                onHover: (info) => {
-                    if (info.object) {
-                        setHovered({ x: info.x, y: info.y });
-                        setName(info.object.properties.name);
-                        setVisible(true);
-                    } else {
-                        setVisible(false);
-                    }
-                },
-                onClick: (info) => {
-                    console.log(info);
-                    if (info.object) {
-                        const divisionName = info.object.properties.name;
-                        const divisionId = divisionName.toLowerCase().replace(" ", "_");
-
-                        setLayers([]);
-                        setQuizEnabled(true);
-
-                        setDivision(divisionId);
-                        setStreetsToDraw([]);
-                        setIsDivisionsView(false);
-                        setStreets(krakowStreets[divisionId]);
-                    }
-                }
-            })
-        ]);
+        setDivisionsData(krakowDivisions.features);
+        setQuizPathData([]);
+        setCurrentStreet([{ name: "loading", path: [[0, 0]] }]);
         setViewState({
             latitude: center.krakow[0],
             longitude: center.krakow[1],
@@ -258,15 +205,20 @@ function MapGuess() {
         enableDivisionsView();
     };
 
+
     return (
         <div className="relative w-full h-screen">
             <MapComponent
                 viewState={viewState}
                 setViewState={setViewState}
                 layers={layers}
-                isControllerEnabled={isControllerEnabled}
                 markers={markers}
                 pathData={pathData}
+                optimalPathData={optimalPathData}
+                quizPathData={quizPathData}
+                divisionsData={divisionsData}
+                onDivisionHover={handleDivisionHover}
+                onDivisionClick={handleDivisionClick}
             />
             {visible && (
                 <div
@@ -295,12 +247,13 @@ function MapGuess() {
                 streetsToDraw={streetsToDraw}
                 setStreetsToDraw={setStreetsToDraw}
                 isDivisionsView={isDivisionsView}
-                setLayers={setLayers}
                 setMarkers={setMarkers}
                 setPathData={setPathData}
                 setViewState={setViewState}
                 gameMode={gameMode}
                 setGameMode={setGameMode}
+                setOptimalPathData={setOptimalPathData}
+                setQuizPathData={setQuizPathData}
             />
             <Changelog
                 version={changelog.version}
