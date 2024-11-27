@@ -62,6 +62,7 @@ const NavigationGame = ({
     setStreetsToDraw,
     setMarkers,
     setPathData,
+    setQuizPathData,
     setOptimalPathData,
     setViewState,
     userRef
@@ -348,6 +349,7 @@ const NavigationGame = ({
         console.log('Starting generation...');
         setIsGenerating(true);
         setIsLoading(true);
+        setQuizPathData([]);
 
         try {
             const streetEntries = Object.entries(streets);

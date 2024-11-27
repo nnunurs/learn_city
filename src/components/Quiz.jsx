@@ -18,6 +18,7 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+import { FaFlag } from "react-icons/fa";
 
 const shuffle = (array) => {
   for (let i = array.length - 1; i > 0; i--) {
@@ -52,7 +53,8 @@ const Quiz = ({
   streetsToDraw,
   setStreetsToDraw,
   division,
-  userRef
+  userRef,
+  focusOnStreet,
 }) => {
   // Early return if any required props are missing
   if (!correct || !streets || correct === "loading") {
@@ -281,7 +283,8 @@ const Quiz = ({
   return (
     <div className="flex flex-col gap-4">
       {userRef ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 text-xl">
+          <div className="btn" onClick={() => focusOnStreet()}><FaFlag className="text-teal-500" />Wróć do ulicy</div>
           <div className="bg-teal-200 py-2 px-4 text-md rounded-md">
             Dobrze znam: {stats.wellKnown}
           </div>
@@ -311,7 +314,7 @@ const Quiz = ({
       )}
 
       <div className="flex flex-col gap-2">
-        {/* <p>{caption}</p> */}
+        <p className="text-lg mt-4 mb-2 mx-2 font-bold">Co to za ulica?</p>
         {options.map((option, i) => {
           return (
             <button
@@ -319,7 +322,7 @@ const Quiz = ({
               type="button"
               onClick={() => checkAnswer(option)}
               className={
-                "btn " +
+                "btn flex justify-start " +
                 (option === correct && checked
                   ? "bg-green-400 hover:bg-green-400"
                   : checked

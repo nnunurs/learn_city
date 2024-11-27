@@ -167,7 +167,7 @@ function MapGuess() {
     const handleDivisionHover = (info) => {
         if (info && info.object) {
             setHovered({ x: info.x, y: info.y });
-            setName(info.object.properties.name);
+            setName(info.name);
             setVisible(true);
         } else {
             setVisible(false);
@@ -184,11 +184,19 @@ function MapGuess() {
         setDivisionsData([]);
     };
 
+    const clearMap = () => {
+        setMarkers([]);
+        setPathData([]);
+        setOptimalPathData([]);
+        setQuizPathData([]);
+        setDivisionsData([]);
+    }
+
     const enableDivisionsView = () => {
         setCity("krakow");
         setQuizEnabled(false);
+        clearMap();
         setDivisionsData(krakowDivisions.features);
-        setQuizPathData([]);
         setCurrentStreet([{ name: "loading", path: [[0, 0]] }]);
         setViewState({
             latitude: center.krakow[0],

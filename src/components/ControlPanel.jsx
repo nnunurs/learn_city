@@ -25,6 +25,7 @@ function ControlPanel({
     gameMode,
     setGameMode,
     setOptimalPathData,
+    setQuizPathData,
 }) {
     useEffect(() => {
         console.log(quizEnabled, division, streets, currentStreet)
@@ -86,6 +87,7 @@ function ControlPanel({
                                     newStreet={getRandomStreet}
                                     division={division}
                                     userRef={userRef}
+                                    focusOnStreet={focusOnStreet}
                                 />
                             ) : gameMode === "navigation" ? (
                                 <NavigationGame
@@ -98,6 +100,7 @@ function ControlPanel({
                                     setPathData={setPathData}
                                     setViewState={setViewState}
                                     setOptimalPathData={setOptimalPathData}
+                                    setQuizPathData={setQuizPathData}
                                 />
                             ) : null}
                         </div>
