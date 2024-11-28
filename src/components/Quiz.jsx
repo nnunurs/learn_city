@@ -19,6 +19,8 @@ import {
   where,
 } from "firebase/firestore";
 import { FaFlag } from "react-icons/fa";
+import { motion, AnimatePresence } from 'framer-motion';
+import Confetti from 'react-confetti';
 
 const shuffle = (array) => {
   for (let i = array.length - 1; i > 0; i--) {
@@ -73,6 +75,7 @@ const Quiz = ({
   const [caption, setCaption] = useState(
     "Ta ulica jeszcze nie była przez ciebie zgadywana",
   );
+  const [isConfettiRunning, setIsConfettiRunning] = useState(false);
 
   // Initialize cookies if they don't exist
   const newOptions = (availableOptions) => {
@@ -108,6 +111,10 @@ const Quiz = ({
     if ( !correct ) {
       console.log("Missing required data for checking answer:", {  division });
       return;
+    }
+
+    if (option === correct) {
+      setIsConfettiRunning(true);
     }
 
     //TODO optimize the amount of db reading
@@ -155,6 +162,7 @@ const Quiz = ({
     setTimeout(() => {
       newStreet();
       setChecked(false);
+      setIsConfettiRunning(false);
     }, 1000);
   };
 
@@ -282,22 +290,37 @@ const Quiz = ({
 
   return (
     <div className="flex flex-col gap-4">
+      <Confetti
+        width={window.innerWidth}
+        height={window.innerHeight}
+        numberOfPieces={200}
+        gravity={0.5}
+        run={isConfettiRunning}
+        recycle={false}
+        onConfettiComplete={() => {
+          setIsConfettiRunning(false);
+        }}
+      />
+      
       {userRef ? (
         <div className="flex flex-col gap-3 text-xl">
-          <div className="btn" onClick={() => focusOnStreet()}><FaFlag className="text-teal-500" />Wróć do ulicy</div>
-          <div className="bg-teal-200 py-2 px-4 text-md rounded-md">
+          <div className="btn transform transition-all duration-200 hover:scale-105" 
+               onClick={() => focusOnStreet()}>
+            <FaFlag className="text-teal-500" />Wróć do ulicy
+          </div>
+          <div className="bg-teal-200 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
             Dobrze znam: {stats.wellKnown}
           </div>
-          <div className="bg-green-200 py-2 px-4 text-md rounded-md">
+          <div className="bg-green-200 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
             Znam: {stats.known}
           </div>
-          <div className="bg-orange-200 py-2 px-4 text-md rounded-md">
+          <div className="bg-orange-200 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
             Jeszcze się uczę: {stats.almostKnown}
           </div>
-          <div className="bg-red-300 py-2 px-4 text-md rounded-md">
+          <div className="bg-red-300 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
             Nie znam: {stats.unknown}
           </div>
-          <div className="bg-slate-200 py-2 px-4 text-md rounded-md">
+          <div className="bg-slate-200 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
             Jeszcze nieodkryte:{" "}
             {streets && Object.keys(streets).length > 0
               ? Object.keys(streets).length -
@@ -315,11 +338,10 @@ const Quiz = ({
 
       <div className="flex flex-col gap-2">
         <p className="text-lg mt-4 mb-2 mx-2 font-bold">Co to za ulica?</p>
-        {options.map((option, i) => {
-          return (
+        <div className="flex flex-col gap-2">
+          {options.map((option) => (
             <button
-              key={i}
-              type="button"
+              key={option}
               onClick={() => checkAnswer(option)}
               className={
                 "btn flex justify-start " +
@@ -332,8 +354,8 @@ const Quiz = ({
             >
               {option}
             </button>
-          );
-        })}
+          ))}
+        </div>
       </div>
     </div>
   );
