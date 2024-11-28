@@ -41,7 +41,7 @@ const getRandomStreet = (streets) => {
   }
   const random_street_key =
     Object.keys(streets)[
-      Math.floor(Math.random() * Object.keys(streets).length)
+    Math.floor(Math.random() * Object.keys(streets).length)
     ];
 
   console.log(streets[random_street_key][0].name);
@@ -92,7 +92,7 @@ const Quiz = ({
     }
 
     const option1 = getRandomStreet(filteredOptions1);
-    
+
     const filteredOptions2 = filterObj(
       availableOptions,
       (e) => e[0].name !== correct && e[0].name !== option1
@@ -108,14 +108,14 @@ const Quiz = ({
   };
 
   const checkAnswer = async (option) => {
-    if ( !correct ) {
-      console.log("Missing required data for checking answer:", {  division });
+    if (!correct) {
+      console.log("Missing required data for checking answer:", { division });
       return;
     }
 
-    if (option === correct) {
-      setIsConfettiRunning(true);
-    }
+    // Resetuj konfetti przed sprawdzeniem nowej odpowiedzi
+    setIsConfettiRunning(false);
+
 
     //TODO optimize the amount of db reading
     const streetsRef = collection(db, "users", userRef, "streets");
@@ -127,6 +127,7 @@ const Quiz = ({
     const querySnapshot = await getDocs(q);
 
     if (option === correct) {
+      setIsConfettiRunning(true);
       if (querySnapshot.empty) {
         await addDoc(streetsRef, {
           name: correct,
@@ -162,7 +163,8 @@ const Quiz = ({
     setTimeout(() => {
       newStreet();
       setChecked(false);
-      setIsConfettiRunning(false);
+      // Upewnij się, że konfetti zostanie zatrzymane po zmianie pytania
+      // setIsConfettiRunning(false);
     }, 1000);
   };
 
@@ -290,22 +292,26 @@ const Quiz = ({
 
   return (
     <div className="flex flex-col gap-4">
-      <Confetti
-        width={window.innerWidth}
-        height={window.innerHeight}
-        numberOfPieces={200}
-        gravity={0.5}
-        run={isConfettiRunning}
-        recycle={false}
-        onConfettiComplete={() => {
-          setIsConfettiRunning(false);
-        }}
-      />
-      
+      <AnimatePresence>
+        {isConfettiRunning && (
+          <Confetti
+            width={window.innerWidth}
+            height={window.innerHeight}
+            numberOfPieces={100}
+            gravity={0.7}
+            run={isConfettiRunning}
+            recycle={false}
+            onConfettiComplete={() => {
+              setIsConfettiRunning(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {userRef ? (
         <div className="flex flex-col gap-3 text-xl">
-          <div className="btn transform transition-all duration-200 hover:scale-105" 
-               onClick={() => focusOnStreet()}>
+          <div className="btn transform transition-all duration-200 hover:scale-105"
+            onClick={() => focusOnStreet()}>
             <FaFlag className="text-teal-500" />Wróć do ulicy
           </div>
           <div className="bg-teal-200 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
@@ -324,10 +330,10 @@ const Quiz = ({
             Jeszcze nieodkryte:{" "}
             {streets && Object.keys(streets).length > 0
               ? Object.keys(streets).length -
-                (stats.wellKnown +
-                  stats.known +
-                  stats.almostKnown +
-                  stats.unknown)
+              (stats.wellKnown +
+                stats.known +
+                stats.almostKnown +
+                stats.unknown)
               : 0}
           </div>
         </div>
