@@ -263,10 +263,10 @@ function MapGuess() {
                 setOptimalPathData={setOptimalPathData}
                 setQuizPathData={setQuizPathData}
             />
-            <Changelog
+            {/* <Changelog
                 version={changelog.version}
                 changes={changelog.changes}
-            />
+            /> */}
         </div>
     );
 }
