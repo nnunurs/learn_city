@@ -298,7 +298,7 @@ const Quiz = ({
             width={window.innerWidth}
             height={window.innerHeight}
             numberOfPieces={100}
-            gravity={0.7}
+            gravity={0.5}
             run={isConfettiRunning}
             recycle={false}
             onConfettiComplete={() => {
