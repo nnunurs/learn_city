@@ -18,20 +18,20 @@ const initialViewState = {
 function MapComponent({ viewState, setViewState, layers, isControllerEnabled, markers, pathData, optimalPathData, quizPathData, onDivisionHover, onDivisionClick, divisionsData }) {
   const getColor = (color) => {
     switch (color) {
-        case "selected":
-            return [205, 39, 217];
-        case "darkgreen":
-            return [51, 114, 120];
-        case "green":
-            return [64, 160, 115];
-        case "red":
-            return [214, 60, 69];
-        case "yellow":
-            return [255, 148, 38];
-        default:
-            return [79, 100, 255];
+      case "selected":
+        return [162, 73, 230];
+      case "darkgreen":
+        return [51, 114, 120];
+      case "green":
+        return [64, 160, 115];
+      case "red":
+        return [214, 60, 69];
+      case "yellow":
+        return [255, 148, 38];
+      default:
+        return [79, 100, 255];
     }
-};
+  };
 
   const markerLayer = new ScatterplotLayer({
     id: 'markers',
@@ -83,7 +83,7 @@ function MapComponent({ viewState, setViewState, layers, isControllerEnabled, ma
     widthMinPixels: 2,
     getPath: d => d.path,
     getColor: d => getColor(d.color),
-    getWidth: d => (d.color === "selected" ? 7 : 5),
+    getWidth: d => (d.color === "selected" ? 10 : 5),
     capRounded: true,
     jointRounded: true
   });
@@ -128,11 +128,11 @@ function MapComponent({ viewState, setViewState, layers, isControllerEnabled, ma
           maxZoom: 18
         }}
         layers={[
-          ...(layers || []), 
-          pathLayer, 
-          divisionsLayer, 
-          optimalPathLayer, 
-          quizPathLayer, 
+          ...(layers || []),
+          pathLayer,
+          divisionsLayer,
+          optimalPathLayer,
+          quizPathLayer,
           markerLayer
         ]}
         getCursor={() => 'pointer'}

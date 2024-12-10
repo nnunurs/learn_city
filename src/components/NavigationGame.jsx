@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Fuse from 'fuse.js';
 import PropTypes from 'prop-types';
 import {
@@ -17,6 +17,30 @@ import {
     useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { FaSearch, FaTimes, FaMapMarkerAlt, FaFlag, FaArrowRight, FaRoute, FaCheck, FaRedo } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const AnimatedNumber = ({ value, className }) => {
+    return (
+        <div className="relative h-8 overflow-hidden">
+            <AnimatePresence mode="popLayout" initial={false}>
+                <motion.div
+                    key={value}
+                    initial={{ y: 50, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -50, opacity: 0 }}
+                    transition={{
+                        y: { type: "spring", stiffness: 100, damping: 15 },
+                        opacity: { duration: 0.2 }
+                    }}
+                    className={`absolute inset-x-0 text-2xl font-bold ${className}`}
+                >
+                    {value}
+                </motion.div>
+            </AnimatePresence>
+        </div>
+    );
+};
 
 const SortableStreet = ({ street, index, onRemove }) => {
     const {
@@ -39,19 +63,22 @@ const SortableStreet = ({ street, index, onRemove }) => {
                 style={style}
                 {...attributes}
                 {...listeners}
-                className="flex items-center"
+                className="flex items-center cursor-move"
             >
-                <div className="text-base-content opacity-50 mx-1 flex-shrink-0">→</div>
-                <div className="badge bg-primary/20 text-primary border-primary flex gap-2 max-w-[200px] overflow-hidden">
+                <div className="text-base-content opacity-50 mx-1 flex-shrink-0">
+                    <FaArrowRight className="w-3 h-3" />
+                </div>
+                <div className="badge badge-lg bg-primary/20 text-primary border-primary flex gap-2 max-w-[200px] overflow-hidden">
                     <span className="truncate">{street.split(" ").map(word => word[0].toUpperCase() + word.slice(1)).join(" ")}</span>
                 </div>
             </div>
             <button
                 onClick={() => onRemove(index)}
-                className="ml-1 hover:text-error flex-shrink-0"
+                className="ml-1 hover:text-error flex-shrink-0 p-1"
                 type="button"
+                title="Remove street"
             >
-                ×
+                <FaTimes className="w-3 h-3" />
             </button>
         </div>
     );
@@ -65,7 +92,8 @@ const NavigationGame = ({
     setQuizPathData,
     setOptimalPathData,
     setViewState,
-    userRef
+    userRef,
+    setNavigationRef
 }) => {
     const [startStreet, setStartStreet] = useState(null);
     const [endStreet, setEndStreet] = useState(null);
@@ -104,12 +132,100 @@ const NavigationGame = ({
         }
     }, [streets]);
 
+    const generateNewChallenge = useCallback(async () => {
+        console.log('Starting generation...');
+        setIsGenerating(true);
+        setIsLoading(true);
+        setQuizPathData([]);
+
+        try {
+            const streetEntries = Object.entries(streets);
+            const startIndex = Math.floor(Math.random() * streetEntries.length);
+            const start = streetEntries[startIndex][1];
+
+            const worker = new Worker(new URL('../workers/streetWorker.js', import.meta.url));
+
+            const result = await new Promise((resolve, reject) => {
+                worker.onmessage = (e) => {
+                    if (e.data.type === 'progress') {
+                        console.log(`Searching... Attempts: ${e.data.attempts}`);
+                        return;
+                    }
+
+                    if (e.data.success) {
+                        resolve(e.data);
+                    } else {
+                        reject(new Error(e.data.error));
+                    }
+                };
+
+                worker.onerror = (error) => {
+                    reject(error);
+                };
+
+                worker.postMessage({ start, streets });
+            });
+
+            worker.terminate();
+
+            if (!result.result) {
+                console.log('Failed to find valid pair');
+                setIsGenerating(false);
+                setIsLoading(false);
+                return;
+            }
+
+            const end = result.result;
+            console.log(`Found valid pair after ${result.attempts} attempts`);
+
+            setSelectedStreets([]);
+            setSearchInput("");
+            setSearchResults([]);
+            setIsCorrect(null);
+            setFeedback("");
+            setPathData([]);
+            setMarkers([]);
+            setOptimalPathData([]);
+            setStartStreet(start);
+            setEndStreet(end);
+            setStreetsToDraw([start[0].name.toLowerCase()]);
+
+            const centerLat = (start[0].path[0][1] + end[0].path[0][1]) / 2;
+            const centerLng = (start[0].path[0][0] + end[0].path[0][0]) / 2;
+
+            setViewState(prev => ({
+                ...prev,
+                latitude: centerLat,
+                longitude: centerLng,
+                zoom: 14,
+                transitionDuration: 1000
+            }));
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            console.log('Generation complete');
+            setIsGenerating(false);
+            setIsLoading(false);
+
+        } catch (error) {
+            console.error('Error generating challenge:', error);
+            setIsGenerating(false);
+            setIsLoading(false);
+        }
+    }, [streets, setMarkers, setPathData, setQuizPathData, setOptimalPathData, setStreetsToDraw, setViewState]);
+
     useEffect(() => {
         if (streets && Object.keys(streets).length > 0) {
             setIsLoading(true);
             generateNewChallenge();
         }
     }, [streets]);
+
+    useEffect(() => {
+        const ref = { generateNewChallenge };
+        setNavigationRef(ref);
+        return () => setNavigationRef(null);
+    }, [setNavigationRef, generateNewChallenge]);
 
     // Update map markers
     useEffect(() => {
@@ -245,9 +361,48 @@ const NavigationGame = ({
         setStreetsToDraw(streetsToDraw);
     };
 
+    // Check if two streets are connected
+    const areStreetsConnected = (street1, street2) => {
+        // Sprawdź wszystkie segmenty obu ulic
+        for (const segment1 of street1) {
+            const path1 = segment1.path;
+
+            for (const segment2 of street2) {
+                const path2 = segment2.path;
+
+                // Sprawdź każdy punkt pierwszej ulicy z każdym punktem drugiej
+                for (let i = 0; i < path1.length; i++) {
+                    for (let j = 0; j < path2.length; j++) {
+                        const distance = calculateDistance(path1[i], path2[j]);
+
+                        // Jeśli znaleziono punkty bliżej niż 50m
+                        if (distance < 50) {
+                            return true;
+                        }
+                    }
+                }
+
+                // Sprawdź czy ulice mają wspólny punkt
+                for (const point1 of path1) {
+                    for (const point2 of path2) {
+                        const distance = calculateDistance(point1, point2);
+                        if (distance < 50) { // 50 metrów tolerancji
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    };
+
     const checkAnswer = () => {
+        setIsLoading(true);
+
         if (!startStreet || !endStreet || selectedStreets.length === 0) {
-            setFeedback("Please select at least one street");
+            setFeedback("Wybierz co najmniej jedną ulicę");
+            setIsCorrect(false);
+            setIsLoading(false);
             return;
         }
 
@@ -323,6 +478,7 @@ const NavigationGame = ({
                 setFullUserRoute(null);
             }
             worker.terminate();
+            setIsLoading(false);
         };
 
         worker.postMessage({
@@ -345,91 +501,6 @@ const NavigationGame = ({
         }
     };
 
-    const generateNewChallenge = async () => {
-        console.log('Starting generation...');
-        setIsGenerating(true);
-        setIsLoading(true);
-        setQuizPathData([]);
-
-        try {
-            const streetEntries = Object.entries(streets);
-            const startIndex = Math.floor(Math.random() * streetEntries.length);
-            const start = streetEntries[startIndex][1];
-
-            const worker = new Worker(new URL('../workers/streetWorker.js', import.meta.url));
-
-            const result = await new Promise((resolve, reject) => {
-                worker.onmessage = (e) => {
-                    if (e.data.type === 'progress') {
-                        console.log(`Searching... Attempts: ${e.data.attempts}`);
-                        return;
-                    }
-
-                    if (e.data.success) {
-                        resolve(e.data);
-                    } else {
-                        reject(new Error(e.data.error));
-                    }
-                };
-
-                worker.onerror = (error) => {
-                    reject(error);
-                };
-
-                // Wyślij dane do workera bez parametrów trudności
-                worker.postMessage({ start, streets });
-            });
-
-            worker.terminate();
-
-            if (!result.result) {
-                console.log('Failed to find valid pair');
-                setIsGenerating(false);
-                setIsLoading(false);
-                return;
-            }
-
-            const end = result.result;
-            console.log(`Found valid pair after ${result.attempts} attempts`);
-
-            // Aktualizuj stany
-            setSelectedStreets([]);
-            setSearchInput("");
-            setSearchResults([]);
-            setIsCorrect(null);
-            setFeedback("");
-            setPathData([]);
-            setMarkers([]);
-            setOptimalPathData([]);
-            setStartStreet(start);
-            setEndStreet(end);
-            setStreetsToDraw([start[0].name.toLowerCase()]);
-
-            // Ustaw widok mapy
-            const centerLat = (start[0].path[0][1] + end[0].path[0][1]) / 2;
-            const centerLng = (start[0].path[0][0] + end[0].path[0][0]) / 2;
-
-            setViewState(prev => ({
-                ...prev,
-                latitude: centerLat,
-                longitude: centerLng,
-                zoom: 14,
-                transitionDuration: 1000
-            }));
-
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            console.log('Generation complete');
-            setIsGenerating(false);
-            setIsLoading(false);
-
-        } catch (error) {
-            console.error('Error generating challenge:', error);
-            setIsGenerating(false);
-            setIsLoading(false);
-        }
-    };
-
     // Helper function to calculate distance between two points
     const calculateDistance = (point1, point2) => {
         const [lat1, lon1] = point1;
@@ -445,7 +516,7 @@ const NavigationGame = ({
             Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-        return R * c; // Distance in meters
+        return R * c;
     };
 
     // Check if two line segments intersect
@@ -454,41 +525,6 @@ const NavigationGame = ({
             return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0]);
         };
         return ccw(p1, p3, p4) !== ccw(p2, p3, p4) && ccw(p1, p2, p3) !== ccw(p1, p2, p4);
-    };
-
-    // Check if two streets are connected
-    const areStreetsConnected = (street1, street2) => {
-        // Sprawdź wszystkie segmenty obu ulic
-        for (const segment1 of street1) {
-            const path1 = segment1.path;
-
-            for (const segment2 of street2) {
-                const path2 = segment2.path;
-
-                // Sprawdź każdy punkt pierwszej ulicy z każdym punktem drugiej
-                for (let i = 0; i < path1.length; i++) {
-                    for (let j = 0; j < path2.length; j++) {
-                        const distance = calculateDistance(path1[i], path2[j]);
-
-                        // Jeśli znaleziono punkty bliżej niż 50m
-                        if (distance < 50) {
-                            return true;
-                        }
-                    }
-                }
-
-                // Sprawdź czy ulice mają wspólny punkt
-                for (const point1 of path1) {
-                    for (const point2 of path2) {
-                        const distance = calculateDistance(point1, point2);
-                        if (distance < 50) { // 50 metrów tolerancji
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
     };
 
     // Generate a route between start and end streets
@@ -562,30 +598,30 @@ const NavigationGame = ({
     }, []);
 
     return (
-        <div className="flex flex-col gap-4 w-full max-w-xl p-4">
+        <div className="flex flex-col gap-2 w-full max-w-xl">
             {/* Game header */}
-            <div className="flex justify-between items-center bg-base-100 rounded-lg p-4 shadow-lg">
+            <div className="flex justify-between items-center bg-base-100 rounded-lg p-4">
                 <div className="flex gap-4">
                     <div className="text-center">
                         <div className="text-sm opacity-60">Score</div>
-                        <div className="text-2xl font-bold text-primary">{score}</div>
+                        <AnimatedNumber value={score} className="text-primary" />
                     </div>
                     <div className="text-center">
                         <div className="text-sm opacity-60">Streak</div>
-                        <div className="text-2xl font-bold text-secondary">{streak}</div>
+                        <AnimatedNumber value={streak} className="text-secondary" />
                     </div>
                 </div>
             </div>
 
             {/* Challenge section */}
-            <div className="bg-base-100 rounded-lg p-4 shadow-lg relative">
+            <div className="bg-base-100 rounded-lg p-4 relative">
                 {isGenerating && (
                     <div className="absolute inset-0 bg-base-100/80 flex items-center justify-center rounded-lg z-10">
                         <div className="loading loading-spinner loading-lg text-primary"></div>
                     </div>
                 )}
 
-                <h2 className="text-lg font-medium mb-4">
+                <h2 className="text-lg font-medium mb-4 pb-4 border-b border-base-300">
                     Navigate from{" "}
                     <span className="text-success font-bold">{startStreet && startStreet[0].name}</span>
                     {" "}to{" "}
@@ -593,10 +629,14 @@ const NavigationGame = ({
                 </h2>
 
                 {/* Route display */}
-                <div className="mb-4">
-                    <div className="text-sm opacity-60 mb-2">Your route:</div>
-                    <div className="flex items-center flex-wrap gap-y-2">
-                        <div className="badge bg-success/20 text-success border-success max-w-[200px] overflow-hidden">
+                <div className="mb-6">
+                    <div className="text-sm opacity-60 mb-2 flex items-center gap-2">
+                        <FaRoute className="w-4 h-4" />
+                        Your route:
+                    </div>
+                    <div className="flex items-center flex-wrap gap-y-2 bg-base-200/50 p-3 rounded-lg">
+                        <div className="badge badge-lg bg-success/20 text-success border-success flex gap-2 max-w-[200px] overflow-hidden">
+                            <FaMapMarkerAlt className="w-3 h-3" />
                             <span className="truncate">
                                 {startStreet && startStreet[0].name}
                             </span>
@@ -624,8 +664,11 @@ const NavigationGame = ({
 
                         {selectedStreets.length > 0 && (
                             <>
-                                <div className="text-base-content opacity-50 mx-1 flex-shrink-0">→</div>
-                                <div className="badge bg-error/20 text-error border-error max-w-[200px] overflow-hidden">
+                                <div className="text-base-content opacity-50 mx-1 flex-shrink-0">
+                                    <FaArrowRight className="w-3 h-3" />
+                                </div>
+                                <div className="badge badge-lg bg-error/20 text-error border-error flex gap-2 max-w-[200px] overflow-hidden">
+                                    <FaFlag className="w-3 h-3" />
                                     <span className="truncate">
                                         {endStreet && endStreet[0].name}
                                     </span>
@@ -636,26 +679,27 @@ const NavigationGame = ({
                 </div>
 
                 {/* Search input */}
-                <div className="form-control">
+                <div className="form-control mb-6">
                     <div className="relative">
                         <input
                             ref={inputRef}
                             type="text"
                             placeholder="Type a street name..."
-                            className="input input-bordered w-full pr-10"
+                            className="input input-bordered w-full pl-10 pr-10"
                             value={searchInput}
                             onChange={(e) => handleSearch(e.target.value)}
                             onKeyDown={handleKeyDown}
                         />
+                        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/60 w-4 h-4" />
                         {searchInput && (
                             <button
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/60 hover:text-base-content"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/60 hover:text-base-content p-1"
                                 onClick={() => {
                                     setSearchInput("");
                                     setSearchResults([]);
                                 }}
                             >
-                                ×
+                                <FaTimes className="w-4 h-4" />
                             </button>
                         )}
                     </div>
@@ -681,7 +725,7 @@ const NavigationGame = ({
 
                 {/* Feedback */}
                 {feedback && (
-                    <div className={`mt-4 p-3 rounded-lg ${isCorrect === true ? 'bg-success/20 text-success' :
+                    <div className={`mb-6 p-3 rounded-lg ${isCorrect === true ? 'bg-success/20 text-success' :
                         isCorrect === false ? 'bg-error/20 text-error' :
                             'bg-info/20 text-info'
                         }`}>
@@ -691,8 +735,8 @@ const NavigationGame = ({
 
                 {/* Statystyki trasy */}
                 {isCorrect && routeStats && (
-                    <div className="bg-base-100 rounded-lg p-4 shadow-lg">
-                        <h3 className="text-lg font-bold mb-2">Route Statistics</h3>
+                    <div className="mb-6 pt-4 border-t border-base-300">
+                        <h3 className="text-lg font-bold mb-4">Route Statistics</h3>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <div className="text-sm opacity-60">Your Route</div>
@@ -725,23 +769,33 @@ const NavigationGame = ({
                 )}
 
                 {/* Controls */}
-                <div className="flex justify-end gap-2 mt-4">
+                <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-base-300">
                     <button
-                        className="btn btn-primary btn-sm"
+                        className="btn btn-primary"
                         onClick={() => checkAnswer()}
-                        disabled={selectedStreets.length === 0 || isGenerating}
+                        disabled={selectedStreets.length === 0 || isGenerating || isCorrect !== null}
                     >
-                        Check Route
+                        {isGenerating ? (
+                            <span className="loading loading-spinner loading-sm"></span>
+                        ) : (
+                            <>
+                                <FaCheck className="w-4 h-4 mr-2" />
+                                Check Route
+                            </>
+                        )}
                     </button>
                     <button
-                        className="btn btn-secondary btn-sm"
+                        className="btn btn-secondary"
                         onClick={generateNewChallenge}
                         disabled={isGenerating}
                     >
                         {isGenerating ? (
                             <span className="loading loading-spinner loading-sm"></span>
                         ) : (
-                            'New Challenge'
+                            <>
+                                <FaRedo className="w-4 h-4 mr-2" />
+                                New Challenge
+                            </>
                         )}
                     </button>
                 </div>
@@ -755,8 +809,11 @@ NavigationGame.propTypes = {
     setStreetsToDraw: PropTypes.func.isRequired,
     setMarkers: PropTypes.func.isRequired,
     setPathData: PropTypes.func.isRequired,
+    setQuizPathData: PropTypes.func.isRequired,
+    setOptimalPathData: PropTypes.func.isRequired,
     setViewState: PropTypes.func.isRequired,
-    userRef: PropTypes.object
+    userRef: PropTypes.object.isRequired,
+    setNavigationRef: PropTypes.func.isRequired
 };
 
 export default NavigationGame;

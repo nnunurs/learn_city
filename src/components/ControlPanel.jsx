@@ -11,6 +11,7 @@ function ControlPanel({
     division,
     focusOnStreet,
     enableDivisionsView,
+    cancelDivisionsView,
     currentStreet,
     streets,
     userRef,
@@ -26,6 +27,8 @@ function ControlPanel({
     setGameMode,
     setOptimalPathData,
     setQuizPathData,
+    navigationRef,
+    setNavigationRef,
 }) {
     useEffect(() => {
         console.log(quizEnabled, division, streets, currentStreet)
@@ -51,25 +54,46 @@ function ControlPanel({
                 <>
                     <div className="glass bg-base-100 bg-opacity-90 rounded-lg px-4 py-2 flex items-center gap-4 justify-end">
                         <button
-                            onClick={enableDivisionsView}
-                            className="btn btn-ghost btn-sm"
-                            title="Zmień dzielnicę"
+                            onClick={isDivisionsView ? cancelDivisionsView : enableDivisionsView}
+                            className={`btn btn-ghost btn-sm ${isDivisionsView ? "btn-error" : ""}`}
+                            title={isDivisionsView ? "Anuluj wybór dzielnicy" : "Zmień dzielnicę"}
                         >
-                            <span className="font-bold">{division.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")}</span>
-                            Zmień dzielnicę
+                            {isDivisionsView ? (
+                                <>
+                                    <span className="font-bold">Anuluj</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="font-bold">{division.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")}</span>
+                                </>
+                            )}
                         </button>
                         <div className="flex gap-2">
                             <button
-                                onClick={() => setGameMode("navigation")}
-                                className={`btn btn-sm ${gameMode === "navigation" ? "btn-primary" : "btn-ghost"}`}
-                                title="Navigation Challenge"
+                                onClick={() => {
+                                    setGameMode("navigation");
+                                    setStreetsToDraw([]);
+                                    setMarkers([]);
+                                    setPathData([]);
+                                    setOptimalPathData([]);
+                                }}
+                                className={`btn btn-sm ${gameMode === "navigation" ? "btn-primary" : "btn-ghost"} ${isDivisionsView ? "btn-disabled opacity-50" : ""}`}
+                                title={isDivisionsView ? "Najpierw wybierz dzielnicę" : "Navigation Challenge"}
+                                disabled={isDivisionsView}
                             >
                                 <FaRoute className="inline mr-1" /> Navigation
                             </button>
                             <button
-                                onClick={() => setGameMode("quiz")}
-                                className={`btn btn-sm ${gameMode === "quiz" ? "btn-primary" : "btn-ghost"}`}
-                                title="Street Quiz"
+                                onClick={() => {
+                                    setGameMode("quiz");
+                                    setMarkers([]);
+                                    setPathData([]);
+                                    setOptimalPathData([]);
+                                    setStreetsToDraw([]);
+                                }}
+                                className={`btn btn-sm ${gameMode === "quiz" ? "btn-primary" : "btn-ghost"} ${isDivisionsView ? "btn-disabled opacity-50" : ""}`}
+                                title={isDivisionsView ? "Najpierw wybierz dzielnicę" : "Street Quiz"}
+                                disabled={isDivisionsView}
                             >
                                 <FaMapMarkerAlt className="inline mr-1" /> Quiz
                             </button>
@@ -78,7 +102,7 @@ function ControlPanel({
                     </div>
                     {division && streets && (
                         <div className="glass bg-base-100 bg-opacity-90 rounded-lg p-4">
-                            {gameMode === "quiz" && quizEnabled ? (
+                            {gameMode === "quiz" ? (
                                 <Quiz
                                     correct={currentStreet[0].name}
                                     streets={streets}
@@ -101,6 +125,7 @@ function ControlPanel({
                                     setViewState={setViewState}
                                     setOptimalPathData={setOptimalPathData}
                                     setQuizPathData={setQuizPathData}
+                                    setNavigationRef={setNavigationRef}
                                 />
                             ) : null}
                         </div>
@@ -123,6 +148,7 @@ ControlPanel.propTypes = {
     division: PropTypes.string,
     focusOnStreet: PropTypes.func.isRequired,
     enableDivisionsView: PropTypes.func.isRequired,
+    cancelDivisionsView: PropTypes.func.isRequired,
     currentStreet: PropTypes.array,
     streets: PropTypes.object,
     userRef: PropTypes.object,
@@ -137,6 +163,9 @@ ControlPanel.propTypes = {
     gameMode: PropTypes.string,
     setGameMode: PropTypes.func.isRequired,
     setOptimalPathData: PropTypes.func.isRequired,
+    setQuizPathData: PropTypes.func.isRequired,
+    navigationRef: PropTypes.object,
+    setNavigationRef: PropTypes.func.isRequired,
 };
 
 export default ControlPanel;

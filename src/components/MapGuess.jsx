@@ -28,6 +28,7 @@ function MapGuess() {
         pitch: 0,
         bearing: 0
     });
+    const [resetKey, setResetKey] = useState(0);
     const [streets, setStreets] = useState(null);
     const [streetsToDraw, setStreetsToDraw] = useState([]);
     const [currentStreet, setCurrentStreet] = useState([{ name: "loading", path: [[0, 0]] }]);
@@ -39,20 +40,18 @@ function MapGuess() {
     const [visible, setVisible] = useState(false);
     const [name, setName] = useState("");
     const [userRef, setUserRef] = useState(null);
-    const [quizEnabled, setQuizEnabled] = useState(false);
     const [markers, setMarkers] = useState([]);
     const [pathData, setPathData] = useState([]);
     const [gameMode, setGameMode] = useState('quiz');
     const [optimalPathData, setOptimalPathData] = useState([]);
     const [quizPathData, setQuizPathData] = useState([]);
     const [divisionsData, setDivisionsData] = useState([]);
-
+    const [navigationRef, setNavigationRef] = useState(null);
 
     useEffect(() => {
         if (userRef) {
             onStartup();
         } else {
-            setQuizEnabled(false)
             setStreetsToDraw([]);
         }
     }, [userRef]);
@@ -67,8 +66,16 @@ function MapGuess() {
             return;
         }
 
-        const random_street_key = weightedRandom(Object.keys(streets), [
-            ...Object.keys(streets).map((e) => {
+        let availableStreets = Object.keys(streets).filter(
+            streetKey => !currentStreet || streetKey !== currentStreet[0]?.name
+        );
+
+        if (availableStreets.length === 0) {
+            availableStreets = Object.keys(streets);
+        }
+
+        const random_street_key = weightedRandom(availableStreets, [
+            ...availableStreets.map((e) => {
                 if (streetsToDraw.map((e) => e.name).includes(e)) {
                     switch (
                     streetsToDraw[findIndexByName(streetsToDraw, e)].color
@@ -121,28 +128,28 @@ function MapGuess() {
     }, [currentStreet, streetsToDraw]);
 
     useEffect(() => {
-        switch (city) {
-            case "krakow":
-                setDivision("stare_miasto");
-                setStreets(krakowStreets["stare_miasto"]);
-                break;
-            case "zakopane":
-                setDivision("zakopane");
-                setStreets(zakopaneStreets);
-                break;
-        }
-    }, [city]);
-
-    useEffect(() => {
-        console.log(division, streets, city);
-        if (!division) return;
+        if (!division || !streets) return;
 
         const divisionStreets = city === "krakow" ? krakowStreets[division] : zakopaneStreets;
         if (!divisionStreets) return;
 
-        setStreets(divisionStreets);
-        getRandomStreet();
-    }, [division, city]);
+        if (JSON.stringify(streets) !== JSON.stringify(divisionStreets)) {
+            setStreets(divisionStreets);
+        }
+        
+        if (Object.keys(streets).length > 0) {
+            getRandomStreet();
+        }
+    }, [division, city, streets, resetKey]);
+
+    useEffect(() => {
+        if (gameMode === 'navigation') {
+            setQuizPathData([]);
+            setCurrentStreet([{ name: "loading", path: [[0, 0]] }]);
+        } else if (gameMode === 'quiz' && streets && Object.keys(streets).length > 0) {
+            getRandomStreet();
+        }
+    }, [gameMode]);
 
     const focusOnStreet = (streetToFocus = currentStreet) => {
         if (!streetToFocus) return;
@@ -176,12 +183,13 @@ function MapGuess() {
 
     const handleDivisionClick = (divisionName) => {
         const divisionId = divisionName.toLowerCase().replace(" ", "_");
-        setQuizEnabled(true);
-        setDivision(divisionId);
+        clearMap();
         setStreetsToDraw([]);
         setIsDivisionsView(false);
-        setStreets(krakowStreets[divisionId]);
         setDivisionsData([]);
+        setStreets(krakowStreets[divisionId]);
+        setDivision(divisionId);
+        setResetKey(prev => prev + 1);
     };
 
     const clearMap = () => {
@@ -194,7 +202,7 @@ function MapGuess() {
 
     const enableDivisionsView = () => {
         setCity("krakow");
-        setQuizEnabled(false);
+        setIsDivisionsView(true);
         clearMap();
         setDivisionsData(krakowDivisions.features);
         setCurrentStreet([{ name: "loading", path: [[0, 0]] }]);
@@ -208,11 +216,25 @@ function MapGuess() {
         });
     };
 
-    const handleEnableDivisionsView = () => {
-        setIsDivisionsView(true);
-        enableDivisionsView();
+    const cancelDivisionsView = () => {
+        setIsDivisionsView(false);
+        clearMap();
+        setDivisionsData([]);
+        if (gameMode === 'quiz' && streets && Object.keys(streets).length > 0) {
+            getRandomStreet();
+        } else if (gameMode === 'navigation' && navigationRef) {
+            navigationRef.generateNewChallenge();
+        } else {
+            setViewState(prev => ({
+                ...prev,
+                latitude: center.krakow[0],
+                longitude: center.krakow[1],
+                zoom: 14,
+                transitionDuration: 800,
+                transitionInterpolator: new FlyToInterpolator(),
+            }));
+        }
     };
-
 
     return (
         <div className="relative w-full h-screen">
@@ -246,12 +268,12 @@ function MapGuess() {
                 name={name}
                 division={division}
                 focusOnStreet={focusOnStreet}
-                enableDivisionsView={handleEnableDivisionsView}
+                enableDivisionsView={enableDivisionsView}
+                cancelDivisionsView={cancelDivisionsView}
                 currentStreet={currentStreet}
                 streets={streets}
                 userRef={userRef}
                 setUserRef={setUserRef}
-                quizEnabled={quizEnabled}
                 streetsToDraw={streetsToDraw}
                 setStreetsToDraw={setStreetsToDraw}
                 isDivisionsView={isDivisionsView}
@@ -262,6 +284,8 @@ function MapGuess() {
                 setGameMode={setGameMode}
                 setOptimalPathData={setOptimalPathData}
                 setQuizPathData={setQuizPathData}
+                navigationRef={navigationRef}
+                setNavigationRef={setNavigationRef}
             />
             <Changelog
                 version={changelog.version}
