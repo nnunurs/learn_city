@@ -131,7 +131,22 @@ function ControlPanel({
                                         <input
                                             type="checkbox"
                                             checked={isHardMode}
-                                            onChange={(e) => setIsHardMode(e.target.checked)}
+                                            onChange={(e) => {
+                                                setIsHardMode(e.target.checked);
+                                                if (e.target.checked) {
+                                                    // Czyścimy mapę przy wejściu w tryb hard
+                                                    setStreetsToDraw([]);
+                                                    setMarkers([]);
+                                                    setPathData([]);
+                                                    setOptimalPathData([]);
+                                                    setQuizPathData([]);
+                                                } else {
+                                                    // Przywracamy normalne zachowanie quizu
+                                                    if (getRandomStreet) {
+                                                        getRandomStreet();
+                                                    }
+                                                }
+                                            }}
                                         />
                                         <div className="swap-on">Hard</div>
                                         <div className="swap-off">Easy</div>

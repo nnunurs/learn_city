@@ -180,7 +180,6 @@ const Quiz = ({
     }
 
     setIsConfettiRunning(false);
-
     const isCorrect = option.toLowerCase() === correct.toLowerCase();
 
     if (isHardMode) {
@@ -206,8 +205,35 @@ const Quiz = ({
             }
           });
         }
+        // Pokazujemy feedback i zmieniamy ulicę po krótkim opóźnieniu
+        setChecked(true);
+        setTimeout(() => {
+          newStreet();
+          setChecked(false);
+          setSearchInput("");
+          setSearchResults([]);
+          // Dodajemy małe opóźnienie dla focusu, aby input był już aktywny
+          setTimeout(() => {
+            if (inputRef.current) {
+              inputRef.current.focus();
+            }
+          }, 50);
+        }, 1000);
       } else {
         setStreak(0);
+        // Pokazujemy feedback dla błędnej odpowiedzi
+        setChecked(true);
+        setTimeout(() => {
+          setChecked(false);
+          setSearchInput("");
+          setSearchResults([]);
+          // Dodajemy małe opóźnienie dla focusu, aby input był już aktywny
+          setTimeout(() => {
+            if (inputRef.current) {
+              inputRef.current.focus();
+            }
+          }, 50);
+        }, 1000);
       }
     } else {
       const streetsRef = collection(db, "users", userRef, "streets");
@@ -496,13 +522,14 @@ const Quiz = ({
                 ref={inputRef}
                 type="text"
                 placeholder="Wpisz nazwę ulicy..."
-                className="input input-bordered w-full pl-10 pr-10"
+                className={`input input-bordered w-full pl-10 pr-10 ${checked && 'input-disabled'}`}
                 value={searchInput}
                 onChange={(e) => handleSearch(e.target.value)}
                 onKeyDown={handleKeyDown}
+                disabled={checked}
               />
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/60 w-4 h-4" />
-              {searchInput && (
+              {searchInput && !checked && (
                 <button
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/60 hover:text-base-content p-1"
                   onClick={() => {
@@ -514,14 +541,12 @@ const Quiz = ({
                 </button>
               )}
             </div>
-            {searchResults.length > 0 && (
+            {searchResults.length > 0 && !checked && (
               <div className="mt-2 bg-base-200 rounded-lg overflow-hidden">
                 {searchResults.map((result, index) => (
                   <button
                     key={index}
-                    className={`w-full px-4 py-2 text-left hover:bg-base-300 flex justify-between items-center ${checked && result.item[0].name === correct ? 'bg-success/20' :
-                      checked ? 'bg-error/20' : ''
-                      }`}
+                    className={`w-full px-4 py-2 text-left hover:bg-base-300 flex justify-between items-center`}
                     onClick={() => {
                       checkAnswer(result.item[0].name);
                       setSearchInput("");
@@ -534,6 +559,11 @@ const Quiz = ({
                     </span>
                   </button>
                 ))}
+              </div>
+            )}
+            {checked && (
+              <div className={`alert mt-2 ${isConfettiRunning ? 'alert-success' : 'alert-error'}`}>
+                <span>{isConfettiRunning ? 'Poprawna odpowiedź!' : `Niepoprawna odpowiedź. Prawidłowa nazwa to: ${correct}`}</span>
               </div>
             )}
           </div>
