@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { FormControl, FormErrorMessage, Input, Button } from "@chakra-ui/react";
 import { useForm } from "react-hook-form";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { collection, getDocs, query, where } from "firebase/firestore";
@@ -8,94 +7,107 @@ import { auth, db } from "../config/firebase";
 import { UserGoogleLogin } from "./UserGoogleLogin";
 import { getErrorMessages } from "../scripts/scripts";
 
-export const UserLoginForm = ({
-  setUser,
-  setUserRef,
-  setIsLoginView,
-  setNickname,
-}) => {
-  const [serverError, setServerError] = useState(null);
+export const UserLoginForm = ({ setUser, setUserRef, setNickname }) => {
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors },
   } = useForm();
 
-  const handleLogin = async (data) => {
+  const onSubmit = async (data) => {
+    setIsLoading(true);
+    setError("");
     try {
       const userCredential = await signInWithEmailAndPassword(
         auth,
         data.email,
         data.password
       );
+
       const q = query(
         collection(db, "users"),
         where("uid", "==", userCredential.user.uid)
       );
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach((doc) => {
-        setUserRef(doc.id);
-        setNickname(doc.data().nick);
+        setNickname(doc.data().nickname);
       });
 
       setUser(userCredential.user);
-      reset();
+      setUserRef(userCredential.user);
     } catch (error) {
-      setServerError(error.code);
-      console.error(error);
+      setError(getErrorMessages(error.code));
     }
+    setIsLoading(false);
   };
 
   return (
-    <form onSubmit={handleSubmit(handleLogin)} className="flex flex-col gap-2">
-      <FormControl isInvalid={errors.email}>
-        <Input
-          type="email"
-          placeholder="Adres email"
-          name="email"
-          {...register("email", {
-            required: "Email jest wymagany",
-          })}
-        />
-        <FormErrorMessage>
-          {errors.email && errors.email.message}
-        </FormErrorMessage>
-      </FormControl>
-      <FormControl isInvalid={errors.password}>
-        <Input
-          type="password"
-          placeholder="Hasło"
-          {...register("password", {
-            required: "Hasło jest wymagane",
-            minLength: {
-              value: 6,
-              message: "Hasło musi mieć co najmniej 6 znaków",
-            },
-          })}
-        />
-        <FormErrorMessage>
-          {errors.password && errors.password.message}
-        </FormErrorMessage>
-      </FormControl>
-      <div className="mt-4">
-        <Button colorScheme="green" className="mr-4" type="submit">
-          Zaloguj się
-        </Button>
-        <UserGoogleLogin setUser={setUser} setUserRef={setUserRef} />
-        <Button
-          className="mt-2"
-          onClick={() => setIsLoginView(false)}
-          variant="link"
-        >
-          Nie masz konta? Zarejestruj się
-        </Button>
-        {serverError && (
-          <p className="text-red-500 text-sm mt-2">
-            {getErrorMessages(serverError)}
-          </p>
+    <div className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <div className="form-control w-full">
+          <input
+            type="email"
+            placeholder="Email"
+            className={`input input-bordered w-full ${errors.email && 'input-error'}`}
+            {...register("email", {
+              required: "Email jest wymagany",
+              pattern: {
+                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                message: "Nieprawidłowy adres email",
+              },
+            })}
+          />
+          {errors.email && (
+            <label className="label">
+              <span className="label-text-alt text-error">{errors.email.message}</span>
+            </label>
+          )}
+        </div>
+
+        <div className="form-control w-full">
+          <input
+            type="password"
+            placeholder="Hasło"
+            className={`input input-bordered w-full ${errors.password && 'input-error'}`}
+            {...register("password", {
+              required: "Hasło jest wymagane",
+              minLength: {
+                value: 6,
+                message: "Hasło musi mieć co najmniej 6 znaków",
+              },
+            })}
+          />
+          {errors.password && (
+            <label className="label">
+              <span className="label-text-alt text-error">{errors.password.message}</span>
+            </label>
+          )}
+        </div>
+
+        {error && (
+          <div className="alert alert-error">
+            <span>{error}</span>
+          </div>
         )}
-      </div>
-    </form>
+
+        <button 
+          type="submit" 
+          className={`btn btn-primary ${isLoading && 'loading'}`}
+          disabled={isLoading}
+        >
+          {isLoading ? 'Logowanie...' : 'Zaloguj się'}
+        </button>
+      </form>
+
+      <div className="divider">lub</div>
+
+      <UserGoogleLogin
+        setUser={setUser}
+        setUserRef={setUserRef}
+        setNickname={setNickname}
+      />
+    </div>
   );
 };

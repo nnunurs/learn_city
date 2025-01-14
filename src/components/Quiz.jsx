@@ -59,12 +59,16 @@ const Quiz = ({
   focusOnStreet,
 }) => {
   // Early return if any required props are missing
-  if (!correct || !streets || correct === "loading") {
-    console.log("Quiz requires all props to be defined:", { correct, streets });
-    return null;
+  if (!correct || !streets || !userRef || correct === "loading") {
+    console.log("Quiz waiting for initialization...", { correct, streets, userRef });
+    return (
+      <div className="flex items-center justify-center p-4">
+        <div className="loading loading-spinner loading-lg"></div>
+      </div>
+    );
   }
 
-  const [options, setOptions] = useState(["option1", "option2", "option3"]);
+  const [options, setOptions] = useState([]);
   const [stats, setStats] = useState({
     wellKnown: 0,
     known: 0,
@@ -76,35 +80,53 @@ const Quiz = ({
     "Ta ulica jeszcze nie była przez ciebie zgadywana",
   );
   const [isConfettiRunning, setIsConfettiRunning] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize cookies if they don't exist
-  const newOptions = (availableOptions) => {
-    if (!availableOptions || !correct) {
+  // Initialize options when component mounts or when dependencies change
+  useEffect(() => {
+    if (!streets || !correct || Object.keys(streets).length === 0) {
+      console.log("No streets data available for options");
       setOptions([]);
       return;
     }
 
-    console.log("refreshing options", correct);
-    const filteredOptions1 = filterObj(availableOptions, (e) => e[0].name !== correct);
-    if (Object.keys(filteredOptions1).length === 0) {
+    console.log("Initializing options with correct street:", correct);
+    const availableOptions = keywordBasedFilter(
+      correct,
+      ["rondo", "skwer", "plac", "bulwar", "aleja", "droga", "most"],
+      streets,
+    );
+
+    if (!availableOptions || Object.keys(availableOptions).length === 0) {
+      console.log("No available options found");
       setOptions([correct]);
       return;
     }
 
-    const option1 = getRandomStreet(filteredOptions1);
+    const newOptions = generateOptions(availableOptions, correct);
+    setOptions(newOptions);
+    setIsInitialized(true);
+  }, [correct, streets]);
 
+  // Helper function to generate options
+  const generateOptions = (availableOptions, correctAnswer) => {
+    const filteredOptions1 = filterObj(availableOptions, (e) => e[0].name !== correctAnswer);
+    if (Object.keys(filteredOptions1).length === 0) {
+      return [correctAnswer];
+    }
+
+    const option1 = getRandomStreet(filteredOptions1);
     const filteredOptions2 = filterObj(
       availableOptions,
-      (e) => e[0].name !== correct && e[0].name !== option1
+      (e) => e[0].name !== correctAnswer && e[0].name !== option1
     );
 
     if (Object.keys(filteredOptions2).length === 0) {
-      setOptions(shuffle([correct, option1]));
-      return;
+      return shuffle([correctAnswer, option1]);
     }
 
     const option2 = getRandomStreet(filteredOptions2);
-    setOptions(shuffle([correct, option1, option2]));
+    return shuffle([correctAnswer, option1, option2]);
   };
 
   const checkAnswer = async (option) => {
@@ -185,20 +207,14 @@ const Quiz = ({
     } else {
       setCaption("Ta ulica jeszcze nie była przez ciebie zgadywana");
     }
-
-    newOptions(
-      keywordBasedFilter(
-        correct,
-        ["rondo", "skwer", "plac", "bulwar", "aleja", "droga", "most"],
-        streets,
-      ),
-    );
   }, [correct, division, streets, userRef]);
 
   const getStreetsToDraw = (querySnapshot) => {
+    console.log("Processing Firestore data");
     let tempStats = { wellKnown: 0, known: 0, almostKnown: 0, unknown: 0 };
     let tempStreetsToDraw = [];
     querySnapshot.forEach((doc) => {
+      console.log("Processing street:", doc.data().name, "count:", doc.data().count);
       if (streets[doc.data().name]) {
         switch (true) {
           case doc.data().count > 2:
@@ -265,17 +281,26 @@ const Quiz = ({
   };
 
   useEffect(() => {
+    console.log("Quiz useEffect - userRef:", userRef, "division:", division);
     if (userRef) {
+      console.log("Setting up Firestore listener for user:", userRef);
       const q = query(
         collection(db, "users", userRef, "streets"),
         where("division", "==", division),
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        console.log("Firestore update received, docs:", querySnapshot.size);
         getStreetsToDraw(querySnapshot);
+      }, (error) => {
+        console.error("Firestore listener error:", error);
       });
-      return () => unsubscribe();
+      return () => {
+        console.log("Cleaning up Firestore listener");
+        unsubscribe();
+      };
     } else {
+      console.log("No userRef, resetting stats");
       setStats({
         wellKnown: 0,
         known: 0,
@@ -314,19 +339,19 @@ const Quiz = ({
             onClick={() => focusOnStreet()}>
             <FaFlag className="text-teal-500" />Wróć do ulicy
           </div>
-          <div className="bg-teal-200 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
+          <div className="bg-teal-200 dark:bg-teal-700 dark:text-teal-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
             Dobrze znam: {stats.wellKnown}
           </div>
-          <div className="bg-green-200 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
+          <div className="bg-green-200 dark:bg-green-700 dark:text-green-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
             Znam: {stats.known}
           </div>
-          <div className="bg-orange-200 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
+          <div className="bg-orange-200 dark:bg-orange-700 dark:text-orange-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
             Jeszcze się uczę: {stats.almostKnown}
           </div>
-          <div className="bg-red-300 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
+          <div className="bg-red-300 dark:bg-red-700 dark:text-red-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
             Nie znam: {stats.unknown}
           </div>
-          <div className="bg-slate-200 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
+          <div className="bg-slate-200 dark:bg-slate-700 dark:text-slate-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
             Jeszcze nieodkryte:{" "}
             {streets && Object.keys(streets).length > 0
               ? Object.keys(streets).length -
@@ -352,9 +377,9 @@ const Quiz = ({
               className={
                 "btn flex justify-start " +
                 (option === correct && checked
-                  ? "bg-green-400 hover:bg-green-400"
+                  ? "bg-green-400 hover:bg-green-400 dark:bg-green-600 dark:hover:bg-green-600 dark:text-green-100"
                   : checked
-                    ? "bg-red-400 hover:bg-red-400"
+                    ? "bg-red-400 hover:bg-red-400 dark:bg-red-600 dark:hover:bg-red-600 dark:text-red-100"
                     : "")
               }
             >

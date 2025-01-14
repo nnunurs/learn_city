@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Button, FormControl, Input, FormErrorMessage } from "@chakra-ui/react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../config/firebase";
 import { addDoc, collection } from "@firebase/firestore";
@@ -8,113 +7,124 @@ import { useForm } from "react-hook-form";
 import { UserGoogleLogin } from "./UserGoogleLogin";
 import { getErrorMessages } from "../scripts/scripts";
 
-export const UserRegisterForm = ({
-  setIsLoginView,
-  setUserRef,
-  setUser,
-  setNickname,
-}) => {
-  const [serverError, setServerError] = useState(null);
-
-  const defaultUser = (uid, nick, email, photoURL, provider) => {
-    return { uid, nick, email, photoURL, provider };
-  };
-
+export const UserRegisterForm = ({ setUser, setUserRef, setNickname }) => {
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors },
   } = useForm();
 
-  const handleSignIn = async (data) => {
+  const onSubmit = async (data) => {
+    setIsLoading(true);
+    setError("");
     try {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         data.email,
         data.password
       );
-      const user = userCredential.user;
-      const userDoc = await addDoc(collection(db, "users"), {
-        ...defaultUser(user.uid, data.nick, user.email, user.photoURL, "local"),
+
+      await addDoc(collection(db, "users"), {
+        uid: userCredential.user.uid,
+        nickname: data.nickname,
       });
-      setUserRef(userDoc.id);
+
       setUser(userCredential.user);
-      reset();
+      setUserRef(userCredential.user);
+      setNickname(data.nickname);
     } catch (error) {
-      console.error(error);
-      setServerError(error.code);
+      setError(getErrorMessages(error.code));
     }
+    setIsLoading(false);
   };
 
   return (
-    <form onSubmit={handleSubmit(handleSignIn)} className="flex flex-col gap-2">
-      <FormControl isInvalid={errors.nick}>
-        <Input
-          type="text"
-          placeholder="Nick"
-          name="nick"
-          {...register("nick", {
-            required: "Nick jest wymagany",
-            minLength: {
-              value: 3,
-              message: "Nick musi mieć co najmniej 3 znaki",
-            },
-          })}
-        />
-        <FormErrorMessage>
-          {errors.nick && errors.nick.message}
-        </FormErrorMessage>
-      </FormControl>
-      <FormControl isInvalid={errors.email}>
-        <Input
-          type="email"
-          placeholder="Adres email"
-          name="email"
-          {...register("email", {
-            required: "Email jest wymagany",
-          })}
-        />
-        <FormErrorMessage>
-          {" "}
-          {errors.email && errors.email.message}
-        </FormErrorMessage>
-      </FormControl>
-      <FormControl isInvalid={errors.password}>
-        <Input
-          type="password"
-          placeholder="Hasło"
-          name="password"
-          {...register("password", {
-            required: "Hasło jest wymagane",
-            minLength: {
-              value: 6,
-              message: "Hasło musi mieć co najmniej 6 znaków",
-            },
-          })}
-        />
-        <FormErrorMessage>
-          {errors.password && errors.password.message}
-        </FormErrorMessage>
-      </FormControl>
-      <div className="mt-4">
-        <Button className="mr-4" colorScheme="green" type="submit">
-          Zarejestruj się
-        </Button>
-        <UserGoogleLogin setUser={setUser} setUserRef={setUserRef} />
-        <Button
-          className="mt-2"
-          onClick={() => setIsLoginView(true)}
-          variant="link"
-        >
-          Masz już konto? Zaloguj się
-        </Button>
-        {serverError && (
-          <p className="text-red-500 text-sm mt-2">
-            {getErrorMessages(serverError)}
-          </p>
+    <div className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <div className="form-control w-full">
+          <input
+            type="text"
+            placeholder="Nazwa użytkownika"
+            className={`input input-bordered w-full ${errors.nickname && 'input-error'}`}
+            {...register("nickname", {
+              required: "Nazwa użytkownika jest wymagana",
+              minLength: {
+                value: 3,
+                message: "Nazwa użytkownika musi mieć co najmniej 3 znaki",
+              },
+            })}
+          />
+          {errors.nickname && (
+            <label className="label">
+              <span className="label-text-alt text-error">{errors.nickname.message}</span>
+            </label>
+          )}
+        </div>
+
+        <div className="form-control w-full">
+          <input
+            type="email"
+            placeholder="Email"
+            className={`input input-bordered w-full ${errors.email && 'input-error'}`}
+            {...register("email", {
+              required: "Email jest wymagany",
+              pattern: {
+                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                message: "Nieprawidłowy adres email",
+              },
+            })}
+          />
+          {errors.email && (
+            <label className="label">
+              <span className="label-text-alt text-error">{errors.email.message}</span>
+            </label>
+          )}
+        </div>
+
+        <div className="form-control w-full">
+          <input
+            type="password"
+            placeholder="Hasło"
+            className={`input input-bordered w-full ${errors.password && 'input-error'}`}
+            {...register("password", {
+              required: "Hasło jest wymagane",
+              minLength: {
+                value: 6,
+                message: "Hasło musi mieć co najmniej 6 znaków",
+              },
+            })}
+          />
+          {errors.password && (
+            <label className="label">
+              <span className="label-text-alt text-error">{errors.password.message}</span>
+            </label>
+          )}
+        </div>
+
+        {error && (
+          <div className="alert alert-error">
+            <span>{error}</span>
+          </div>
         )}
-      </div>
-    </form>
+
+        <button 
+          type="submit" 
+          className={`btn btn-primary ${isLoading && 'loading'}`}
+          disabled={isLoading}
+        >
+          {isLoading ? 'Rejestracja...' : 'Zarejestruj się'}
+        </button>
+      </form>
+
+      <div className="divider">lub</div>
+
+      <UserGoogleLogin
+        setUser={setUser}
+        setUserRef={setUserRef}
+        setNickname={setNickname}
+      />
+    </div>
   );
 };

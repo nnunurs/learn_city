@@ -15,7 +15,7 @@ const initialViewState = {
   controller: true,
 };
 
-function MapComponent({ viewState, setViewState, layers, isControllerEnabled, markers, pathData, optimalPathData, quizPathData, onDivisionHover, onDivisionClick, divisionsData }) {
+function MapComponent({ viewState, setViewState, layers, markers, pathData, optimalPathData, quizPathData, onDivisionHover, onDivisionClick, divisionsData }) {
   const getColor = (color) => {
     switch (color) {
       case "selected":
@@ -142,6 +142,18 @@ function MapComponent({ viewState, setViewState, layers, isControllerEnabled, ma
           mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
           reuseMaps
           preventStyleDiffing
+          transformRequest={(url, resourceType) => {
+            if (resourceType === 'Style' && !url) {
+              return { url: 'mapbox://styles/mapbox/dark-v10' };
+            }
+            return { url };
+          }}
+          onError={(error) => {
+            if (error.message.includes('Failed to evaluate expression')) {
+              return;
+            }
+            console.error('Mapbox error:', error);
+          }}
         />
       </DeckGL>
     </div>
@@ -156,7 +168,6 @@ MapComponent.propTypes = {
   }).isRequired,
   setViewState: PropTypes.func.isRequired,
   layers: PropTypes.array.isRequired,
-  isControllerEnabled: PropTypes.bool.isRequired,
   markers: PropTypes.array,
   pathData: PropTypes.array,
   optimalPathData: PropTypes.array,

@@ -14,6 +14,8 @@ import MapComponent from "./MapComponent";
 import ControlPanel from "./ControlPanel";
 import NavigationGame from "./NavigationGame";
 import ErrorBoundary from "./ErrorBoundary";
+import { auth } from "../config/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 const center = {
     krakow: [50.06168144356519, 19.937328289497746],
@@ -48,13 +50,56 @@ function MapGuess() {
     const [divisionsData, setDivisionsData] = useState([]);
     const [navigationRef, setNavigationRef] = useState(null);
 
+    // Nasłuchuj na zmiany stanu autoryzacji
     useEffect(() => {
+        console.log("Setting up auth listener");
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            console.log("Auth state changed:", user?.uid);
+            if (user) {
+                console.log("Setting userRef to:", user.uid);
+                setUserRef(user.uid);
+                // Jeśli użytkownik jest zalogowany, ale nie ma wybranej dzielnicy, pokaż wybór dzielnicy
+                if (!division || division === "stare_miasto") {
+                    enableDivisionsView();
+                }
+            } else {
+                console.log("Clearing userRef");
+                setUserRef(null);
+                setStreetsToDraw([]);
+            }
+        });
+
+        // Sprawdź aktualny stan przy montowaniu
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+            console.log("Initial auth state:", currentUser.uid);
+            setUserRef(currentUser.uid);
+            if (!division || division === "stare_miasto") {
+                enableDivisionsView();
+            }
+        }
+
+        return () => unsubscribe();
+    }, []);
+
+    useEffect(() => {
+        console.log("userRef changed:", userRef);
         if (userRef) {
-            onStartup();
+            console.log("Starting up with userRef:", userRef);
+            // Opóźnij wywołanie onStartup aby dać czas na załadowanie innych komponentów
+            setTimeout(() => {
+                onStartup();
+            }, 100);
         } else {
+            console.log("Clearing streetsToDraw due to no userRef");
             setStreetsToDraw([]);
+            setCurrentStreet([{ name: "loading", path: [[0, 0]] }]);
         }
     }, [userRef]);
+
+    useEffect(() => {
+        console.log("streetsToDraw changed:", streetsToDraw.length);
+    }, [streetsToDraw]);
 
     const onStartup = () => {
         enableDivisionsView();
@@ -66,13 +111,21 @@ function MapGuess() {
             return;
         }
 
+        if (!userRef) {
+            console.warn("No userRef available, cannot select random street.");
+            return;
+        }
+
         let availableStreets = Object.keys(streets).filter(
             streetKey => !currentStreet || streetKey !== currentStreet[0]?.name
         );
 
         if (availableStreets.length === 0) {
+            console.log("No available streets, resetting filter");
             availableStreets = Object.keys(streets);
         }
+
+        console.log("Selecting from", availableStreets.length, "available streets");
 
         const random_street_key = weightedRandom(availableStreets, [
             ...availableStreets.map((e) => {
@@ -98,6 +151,7 @@ function MapGuess() {
         ]).item;
 
         const newStreet = streets[random_street_key];
+        console.log("Selected new street:", newStreet[0].name);
         setCurrentStreet(newStreet);
 
         setQuizPathData([
@@ -128,28 +182,38 @@ function MapGuess() {
     }, [currentStreet, streetsToDraw]);
 
     useEffect(() => {
-        if (!division || !streets) return;
+        if (!division || !streets) {
+            console.log("Missing division or streets data");
+            return;
+        }
 
         const divisionStreets = city === "krakow" ? krakowStreets[division] : zakopaneStreets;
-        if (!divisionStreets) return;
+        if (!divisionStreets) {
+            console.log("No streets data for division:", division);
+            return;
+        }
 
         if (JSON.stringify(streets) !== JSON.stringify(divisionStreets)) {
+            console.log("Setting streets for division:", division);
             setStreets(divisionStreets);
+            return; // Poczekaj na następny cykl useEffect
         }
         
-        if (Object.keys(streets).length > 0) {
+        if (Object.keys(streets).length > 0 && gameMode === 'quiz' && userRef) {
+            console.log("Getting random street for quiz");
             getRandomStreet();
         }
-    }, [division, city, streets, resetKey]);
+    }, [division, city, streets, resetKey, gameMode, userRef]);
 
     useEffect(() => {
         if (gameMode === 'navigation') {
             setQuizPathData([]);
             setCurrentStreet([{ name: "loading", path: [[0, 0]] }]);
-        } else if (gameMode === 'quiz' && streets && Object.keys(streets).length > 0) {
+        } else if (gameMode === 'quiz' && streets && Object.keys(streets).length > 0 && userRef) {
+            console.log("Initializing quiz mode");
             getRandomStreet();
         }
-    }, [gameMode]);
+    }, [gameMode, streets, userRef]);
 
     const focusOnStreet = (streetToFocus = currentStreet) => {
         if (!streetToFocus) return;
@@ -252,7 +316,7 @@ function MapGuess() {
             />
             {visible && (
                 <div
-                    className="absolute z-10 pointer-events-none glass rounded-lg shadow-lg p-4"
+                    className="absolute z-10 pointer-events-none bg-base-100 bg-opacity-90 rounded-lg shadow-lg p-4"
                     style={{
                         left: hovered.x + 15,
                         top: hovered.y + 15,
