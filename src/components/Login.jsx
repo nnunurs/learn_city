@@ -18,33 +18,33 @@ export const Login = ({ setUserRef, children }) => {
     const currentUser = auth.currentUser;
     if (currentUser) {
       setUser(currentUser);
-      setUserRef(currentUser.uid);
-      // Pobierz nickname z Firestore
-      const fetchNickname = async () => {
+      // Pobierz ID dokumentu i nickname z Firestore
+      const fetchUserData = async () => {
         const q = query(
           collection(db, "users"),
           where("uid", "==", currentUser.uid)
         );
         const querySnapshot = await getDocs(q);
         querySnapshot.forEach((doc) => {
+          setUserRef(doc.id);
           setNickname(doc.data().nickname);
         });
       };
-      fetchNickname();
+      fetchUserData();
     }
 
     // Nasłuchuj na zmiany stanu autoryzacji
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        setUserRef(currentUser.uid);
-        // Pobierz nickname z Firestore
+        // Pobierz ID dokumentu i nickname z Firestore
         const q = query(
           collection(db, "users"),
           where("uid", "==", currentUser.uid)
         );
         const querySnapshot = await getDocs(q);
         querySnapshot.forEach((doc) => {
+          setUserRef(doc.id);
           setNickname(doc.data().nickname);
         });
       } else {

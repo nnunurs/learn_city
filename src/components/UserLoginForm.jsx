@@ -32,11 +32,11 @@ export const UserLoginForm = ({ setUser, setUserRef, setNickname }) => {
       );
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach((doc) => {
+        setUserRef(doc.id);
         setNickname(doc.data().nickname);
       });
 
       setUser(userCredential.user);
-      setUserRef(userCredential.user);
     } catch (error) {
       setError(getErrorMessages(error.code));
     }
@@ -92,8 +92,8 @@ export const UserLoginForm = ({ setUser, setUserRef, setNickname }) => {
           </div>
         )}
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className={`btn btn-primary ${isLoading && 'loading'}`}
           disabled={isLoading}
         >

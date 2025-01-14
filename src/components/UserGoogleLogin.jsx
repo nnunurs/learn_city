@@ -15,8 +15,10 @@ export const UserGoogleLogin = ({ setUser, setUserRef }) => {
       const user = userCredential.user;
       const q = query(collection(db, "users"), where("uid", "==", user.uid));
       const querySnapshot = await getDocs(q);
+
+      let userDocId;
       if (querySnapshot.empty) {
-        await addDoc(collection(db, "users"), {
+        const docRef = await addDoc(collection(db, "users"), {
           ...defaultUser(
             user.uid,
             user.displayName,
@@ -25,9 +27,15 @@ export const UserGoogleLogin = ({ setUser, setUserRef }) => {
             "google"
           ),
         });
+        userDocId = docRef.id;
+      } else {
+        querySnapshot.forEach((doc) => {
+          userDocId = doc.id;
+        });
       }
-      querySnapshot.forEach((doc) => setUserRef(doc.id));
 
+      console.log("Setting userRef to document ID:", userDocId);
+      setUserRef(userDocId);
       setUser(userCredential.user);
     } catch (error) {
       console.error(error);

@@ -12,7 +12,7 @@ export const UserRegisterForm = ({ setUser, setUserRef, setNickname }) => {
   const [isLoading, setIsLoading] = useState(false);
   const {
     register,
-    handleSubmit,
+    handleSubmit: handleFormSubmit,
     formState: { errors },
   } = useForm();
 
@@ -26,15 +26,19 @@ export const UserRegisterForm = ({ setUser, setUserRef, setNickname }) => {
         data.password
       );
 
-      await addDoc(collection(db, "users"), {
+      // Dodaj użytkownika do Firestore
+      const docRef = await addDoc(collection(db, "users"), {
         uid: userCredential.user.uid,
         nickname: data.nickname,
+        email: data.email,
+        provider: "email",
       });
 
       setUser(userCredential.user);
-      setUserRef(userCredential.user);
+      setUserRef(docRef.id);
       setNickname(data.nickname);
     } catch (error) {
+      console.error(error);
       setError(getErrorMessages(error.code));
     }
     setIsLoading(false);
@@ -42,7 +46,7 @@ export const UserRegisterForm = ({ setUser, setUserRef, setNickname }) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+      <form onSubmit={handleFormSubmit(onSubmit)} className="flex flex-col gap-4">
         <div className="form-control w-full">
           <input
             type="text"
@@ -103,14 +107,31 @@ export const UserRegisterForm = ({ setUser, setUserRef, setNickname }) => {
           )}
         </div>
 
+        <div className="form-control w-full">
+          <input
+            type="password"
+            placeholder="Powtórz hasło"
+            className={`input input-bordered w-full ${errors.confirmPassword && 'input-error'}`}
+            {...register("confirmPassword", {
+              required: "Powtórz hasło",
+              validate: (value, formValues) => value === formValues.password || "Hasła nie są takie same"
+            })}
+          />
+          {errors.confirmPassword && (
+            <label className="label">
+              <span className="label-text-alt text-error">{errors.confirmPassword.message}</span>
+            </label>
+          )}
+        </div>
+
         {error && (
           <div className="alert alert-error">
             <span>{error}</span>
           </div>
         )}
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className={`btn btn-primary ${isLoading && 'loading'}`}
           disabled={isLoading}
         >

@@ -30,6 +30,8 @@ function ControlPanel({
     navigationRef,
     setNavigationRef,
 }) {
+    const [isHardMode, setIsHardMode] = useState(false);
+
     useEffect(() => {
         console.log("ControlPanel - userRef changed:", userRef);
         console.log("ControlPanel - current division:", division);
@@ -43,6 +45,7 @@ function ControlPanel({
             setOptimalPathData([]);
             setQuizPathData([]);
             setNavigationRef(null);
+            setIsHardMode(false);
         }
     }, [userRef]);
 
@@ -58,6 +61,7 @@ function ControlPanel({
             setOptimalPathData([]);
             setQuizPathData([]);
             setNavigationRef(null);
+            setIsHardMode(false);
         };
 
         resetGameState();
@@ -121,6 +125,19 @@ function ControlPanel({
                             >
                                 <FaMapMarkerAlt className="inline mr-1" /> Quiz
                             </button>
+                            {gameMode === "quiz" && (
+                                <div className="flex items-center gap-2">
+                                    <label className="swap swap-flip">
+                                        <input
+                                            type="checkbox"
+                                            checked={isHardMode}
+                                            onChange={(e) => setIsHardMode(e.target.checked)}
+                                        />
+                                        <div className="swap-on">Hard</div>
+                                        <div className="swap-off">Easy</div>
+                                    </label>
+                                </div>
+                            )}
                         </div>
                         <Login setUserRef={setUserRef} />
                     </div>
@@ -136,6 +153,7 @@ function ControlPanel({
                                     division={division}
                                     userRef={userRef}
                                     focusOnStreet={focusOnStreet}
+                                    isHardMode={isHardMode}
                                 />
                             ) : gameMode === "navigation" ? (
                                 <NavigationGame

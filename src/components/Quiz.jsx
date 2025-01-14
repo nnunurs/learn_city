@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useCookies } from "react-cookie";
 import {
   filterObj,
@@ -18,9 +18,10 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import { FaFlag } from "react-icons/fa";
+import { FaFlag, FaSearch, FaTimes } from "react-icons/fa";
 import { motion, AnimatePresence } from 'framer-motion';
 import Confetti from 'react-confetti';
+import Fuse from 'fuse.js';
 
 const shuffle = (array) => {
   for (let i = array.length - 1; i > 0; i--) {
@@ -57,6 +58,7 @@ const Quiz = ({
   division,
   userRef,
   focusOnStreet,
+  isHardMode = false
 }) => {
   // Early return if any required props are missing
   if (!correct || !streets || !userRef || correct === "loading") {
@@ -81,6 +83,48 @@ const Quiz = ({
   );
   const [isConfettiRunning, setIsConfettiRunning] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [streak, setStreak] = useState(0);
+  const [highScore, setHighScore] = useState(0);
+  const fuseRef = useRef(null);
+  const inputRef = useRef(null);
+  const listenerRef = useRef(null);
+  const isInitialMount = useRef(true);
+  const previousDivision = useRef(division);
+
+  // Initialize Fuse.js for hardmode
+  useEffect(() => {
+    if (streets && Object.keys(streets).length > 0) {
+      const options = {
+        includeScore: true,
+        threshold: 0.4,
+        keys: ['0.name']
+      };
+      fuseRef.current = new Fuse(Object.values(streets), options);
+    }
+  }, [streets]);
+
+  // Handle search input for hardmode
+  const handleSearch = (value) => {
+    setSearchInput(value);
+    if (!value.trim() || !fuseRef.current) {
+      setSearchResults([]);
+      return;
+    }
+    const results = fuseRef.current.search(value).slice(0, 5);
+    setSearchResults(results);
+  };
+
+  // Handle keyboard navigation for hardmode
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && searchResults.length > 0) {
+      e.preventDefault();
+      checkAnswer(searchResults[0].item[0].name);
+      setSearchInput("");
+      setSearchResults([]);
+    }
+  };
 
   // Initialize options when component mounts or when dependencies change
   useEffect(() => {
@@ -135,60 +179,98 @@ const Quiz = ({
       return;
     }
 
-    // Resetuj konfetti przed sprawdzeniem nowej odpowiedzi
     setIsConfettiRunning(false);
 
+    const isCorrect = option.toLowerCase() === correct.toLowerCase();
 
-    //TODO optimize the amount of db reading
-    const streetsRef = collection(db, "users", userRef, "streets");
-    console.log("ref", userRef);
-    const q = query(
-      streetsRef,
-      and(where("name", "==", correct), where("division", "==", division)),
-    );
-    const querySnapshot = await getDocs(q);
-
-    if (option === correct) {
-      setIsConfettiRunning(true);
-      if (querySnapshot.empty) {
-        await addDoc(streetsRef, {
-          name: correct,
-          division: division,
-          count: 1,
-        });
-      } else {
-        querySnapshot.forEach(async (doc) => {
-          await updateDoc(doc.ref, {
-            count: doc.data().count === -1 ? 1 : doc.data().count + 1,
+    if (isHardMode) {
+      if (isCorrect) {
+        setIsConfettiRunning(true);
+        const newStreak = streak + 1;
+        setStreak(newStreak);
+        setHighScore(Math.max(highScore, newStreak));
+        // Zapisz highscore do Firebase
+        const statsCollection = collection(db, "users", userRef, "stats");
+        const statsDoc = await getDocs(query(statsCollection, where("type", "==", "quiz_hardmode")));
+        if (statsDoc.empty) {
+          await addDoc(statsCollection, {
+            type: "quiz_hardmode",
+            highScore: Math.max(highScore, newStreak)
           });
-        });
+        } else {
+          statsDoc.forEach(async (doc) => {
+            if (Math.max(highScore, newStreak) > doc.data().highScore) {
+              await updateDoc(doc.ref, {
+                highScore: Math.max(highScore, newStreak)
+              });
+            }
+          });
+        }
+      } else {
+        setStreak(0);
       }
-      console.log("correct");
     } else {
-      if (querySnapshot.empty) {
-        await addDoc(streetsRef, {
-          name: correct,
-          division: division,
-          count: -1,
-        });
-      } else {
-        querySnapshot.forEach(async (doc) => {
-          await updateDoc(doc.ref, {
-            count: doc.data().count === 1 ? -1 : 0,
+      const streetsRef = collection(db, "users", userRef, "streets");
+      const q = query(
+        streetsRef,
+        and(where("name", "==", correct), where("division", "==", division)),
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (isCorrect) {
+        setIsConfettiRunning(true);
+        if (querySnapshot.empty) {
+          await addDoc(streetsRef, {
+            name: correct,
+            division: division,
+            count: 1,
           });
-        });
+        } else {
+          querySnapshot.forEach(async (doc) => {
+            await updateDoc(doc.ref, {
+              count: doc.data().count === -1 ? 1 : doc.data().count + 1,
+            });
+          });
+        }
+      } else {
+        if (querySnapshot.empty) {
+          await addDoc(streetsRef, {
+            name: correct,
+            division: division,
+            count: -1,
+          });
+        } else {
+          querySnapshot.forEach(async (doc) => {
+            await updateDoc(doc.ref, {
+              count: doc.data().count === 1 ? -1 : 0,
+            });
+          });
+        }
       }
-      console.log("wrong");
     }
 
     setChecked(true);
     setTimeout(() => {
       newStreet();
       setChecked(false);
-      // Upewnij się, że konfetti zostanie zatrzymane po zmianie pytania
-      // setIsConfettiRunning(false);
     }, 1000);
   };
+
+  // Load highscore from Firebase
+  useEffect(() => {
+    if (isHardMode && userRef) {
+      const loadHighScore = async () => {
+        const statsRef = collection(db, "users", userRef, "stats");
+        const statsDoc = await getDocs(query(statsRef, where("type", "==", "quiz_hardmode")));
+        if (!statsDoc.empty) {
+          statsDoc.forEach((doc) => {
+            setHighScore(doc.data().highScore || 0);
+          });
+        }
+      };
+      loadHighScore();
+    }
+  }, [isHardMode, userRef]);
 
   useEffect(() => {
     if (!userRef || !correct || !division || !streets) {
@@ -280,27 +362,55 @@ const Quiz = ({
     setStreetsToDraw(tempStreetsToDraw);
   };
 
+  // Effect for handling Firestore listener
   useEffect(() => {
-    console.log("Quiz useEffect - userRef:", userRef, "division:", division);
-    if (userRef) {
-      console.log("Setting up Firestore listener for user:", userRef);
+    let isMounted = true;
+    let unsubscribe = null;
+    console.log("Quiz useEffect - setup listener");
+
+    const setupFirestoreListener = async () => {
+      if (!userRef || !division) return;
+
+      console.log("Setting up Firestore listener for user:", userRef, "division:", division);
+
       const q = query(
         collection(db, "users", userRef, "streets"),
         where("division", "==", division),
       );
 
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        console.log("Firestore update received, docs:", querySnapshot.size);
-        getStreetsToDraw(querySnapshot);
+      unsubscribe = onSnapshot(q, (querySnapshot) => {
+        if (isMounted) {
+          console.log("Firestore update received, docs:", querySnapshot.size);
+          console.log("Filtered documents:", querySnapshot.docs.map(doc => ({
+            name: doc.data().name,
+            division: doc.data().division,
+            count: doc.data().count
+          })));
+          getStreetsToDraw(querySnapshot);
+        }
       }, (error) => {
         console.error("Firestore listener error:", error);
       });
-      return () => {
-        console.log("Cleaning up Firestore listener");
+    };
+
+    if (userRef && division) {
+      console.log("Setting up new listener for division:", division);
+      setupFirestoreListener();
+    }
+
+    return () => {
+      isMounted = false;
+      if (unsubscribe) {
+        console.log("Cleaning up Firestore listener for division:", division);
         unsubscribe();
-      };
-    } else {
-      console.log("No userRef, resetting stats");
+      }
+    };
+  }, [userRef, division]);
+
+  // Reset stats when no data is available
+  useEffect(() => {
+    if (!userRef || !division) {
+      console.log("No userRef or division, resetting stats");
       setStats({
         wellKnown: 0,
         known: 0,
@@ -309,7 +419,7 @@ const Quiz = ({
       });
       setStreetsToDraw([]);
     }
-  }, [division, userRef]);
+  }, [userRef, division]);
 
   useEffect(() => {
     console.log(stats);
@@ -333,60 +443,120 @@ const Quiz = ({
         )}
       </AnimatePresence>
 
-      {userRef ? (
+      {userRef && (
         <div className="flex flex-col gap-3 text-xl">
           <div className="btn transform transition-all duration-200 hover:scale-105"
             onClick={() => focusOnStreet()}>
             <FaFlag className="text-teal-500" />Wróć do ulicy
           </div>
-          <div className="bg-teal-200 dark:bg-teal-700 dark:text-teal-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
-            Dobrze znam: {stats.wellKnown}
-          </div>
-          <div className="bg-green-200 dark:bg-green-700 dark:text-green-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
-            Znam: {stats.known}
-          </div>
-          <div className="bg-orange-200 dark:bg-orange-700 dark:text-orange-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
-            Jeszcze się uczę: {stats.almostKnown}
-          </div>
-          <div className="bg-red-300 dark:bg-red-700 dark:text-red-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
-            Nie znam: {stats.unknown}
-          </div>
-          <div className="bg-slate-200 dark:bg-slate-700 dark:text-slate-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
-            Jeszcze nieodkryte:{" "}
-            {streets && Object.keys(streets).length > 0
-              ? Object.keys(streets).length -
-              (stats.wellKnown +
-                stats.known +
-                stats.almostKnown +
-                stats.unknown)
-              : 0}
-          </div>
-        </div>
-      ) : (
-        <div>
+          {isHardMode ? (
+            <>
+              <div className="bg-primary/20 text-primary py-2 px-4 text-md rounded-md">
+                Streak: {streak}
+              </div>
+              <div className="bg-secondary/20 text-secondary py-2 px-4 text-md rounded-md">
+                High Score: {highScore}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="bg-teal-200 dark:bg-teal-700 dark:text-teal-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
+                Dobrze znam: {stats.wellKnown}
+              </div>
+              <div className="bg-green-200 dark:bg-green-700 dark:text-green-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
+                Znam: {stats.known}
+              </div>
+              <div className="bg-orange-200 dark:bg-orange-700 dark:text-orange-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
+                Jeszcze się uczę: {stats.almostKnown}
+              </div>
+              <div className="bg-red-300 dark:bg-red-700 dark:text-red-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
+                Nie znam: {stats.unknown}
+              </div>
+              <div className="bg-slate-200 dark:bg-slate-700 dark:text-slate-100 py-2 px-4 text-md rounded-md transform transition-all duration-300 hover:translate-x-2">
+                Jeszcze nieodkryte:{" "}
+                {streets && Object.keys(streets).length > 0
+                  ? Object.keys(streets).length -
+                  (stats.wellKnown +
+                    stats.known +
+                    stats.almostKnown +
+                    stats.unknown)
+                  : 0}
+              </div>
+            </>
+          )}
         </div>
       )}
 
       <div className="flex flex-col gap-2">
         <p className="text-lg mt-4 mb-2 mx-2 font-bold">Co to za ulica?</p>
-        <div className="flex flex-col gap-2">
-          {options.map((option) => (
-            <button
-              key={option}
-              onClick={() => checkAnswer(option)}
-              className={
-                "btn flex justify-start " +
-                (option === correct && checked
-                  ? "bg-green-400 hover:bg-green-400 dark:bg-green-600 dark:hover:bg-green-600 dark:text-green-100"
-                  : checked
-                    ? "bg-red-400 hover:bg-red-400 dark:bg-red-600 dark:hover:bg-red-600 dark:text-red-100"
-                    : "")
-              }
-            >
-              {option}
-            </button>
-          ))}
-        </div>
+        {isHardMode ? (
+          <div className="form-control">
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Wpisz nazwę ulicy..."
+                className="input input-bordered w-full pl-10 pr-10"
+                value={searchInput}
+                onChange={(e) => handleSearch(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/60 w-4 h-4" />
+              {searchInput && (
+                <button
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/60 hover:text-base-content p-1"
+                  onClick={() => {
+                    setSearchInput("");
+                    setSearchResults([]);
+                  }}
+                >
+                  <FaTimes className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            {searchResults.length > 0 && (
+              <div className="mt-2 bg-base-200 rounded-lg overflow-hidden">
+                {searchResults.map((result, index) => (
+                  <button
+                    key={index}
+                    className={`w-full px-4 py-2 text-left hover:bg-base-300 flex justify-between items-center ${checked && result.item[0].name === correct ? 'bg-success/20' :
+                      checked ? 'bg-error/20' : ''
+                      }`}
+                    onClick={() => {
+                      checkAnswer(result.item[0].name);
+                      setSearchInput("");
+                      setSearchResults([]);
+                    }}
+                  >
+                    <span>{result.item[0].name}</span>
+                    <span className="text-xs opacity-60">
+                      {Math.round((1 - result.score) * 100)}% match
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {options.map((option) => (
+              <button
+                key={option}
+                onClick={() => checkAnswer(option)}
+                className={
+                  "btn flex justify-start " +
+                  (option === correct && checked
+                    ? "bg-green-400 hover:bg-green-400 dark:bg-green-600 dark:hover:bg-green-600 dark:text-green-100"
+                    : checked
+                      ? "bg-red-400 hover:bg-red-400 dark:bg-red-600 dark:hover:bg-red-600 dark:text-red-100"
+                      : "")
+                }
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
