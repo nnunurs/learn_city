@@ -16,6 +16,8 @@ import NavigationGame from "./NavigationGame";
 import ErrorBoundary from "./ErrorBoundary";
 import { auth } from "../config/firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { getDoc, doc } from "firebase/firestore";
+import { db } from "../config/firebase";
 
 const center = {
     krakow: [50.06168144356519, 19.937328289497746],
@@ -53,14 +55,18 @@ function MapGuess() {
     // Nasłuchuj na zmiany stanu autoryzacji
     useEffect(() => {
         console.log("Setting up auth listener");
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
             console.log("Auth state changed:", user?.uid);
             if (user) {
-                console.log("Setting userRef to:", user.uid);
-                setUserRef(user.uid);
-                // Jeśli użytkownik jest zalogowany, ale nie ma wybranej dzielnicy, pokaż wybór dzielnicy
-                if (!division || division === "stare_miasto") {
-                    enableDivisionsView();
+                // Pobierz dokument użytkownika
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists()) {
+                    console.log("Setting userRef to document ID:", userDoc.id);
+                    setUserRef(userDoc.id);
+                    // Jeśli użytkownik jest zalogowany, ale nie ma wybranej dzielnicy, pokaż wybór dzielnicy
+                    if (!division || division === "stare_miasto") {
+                        enableDivisionsView();
+                    }
                 }
             } else {
                 console.log("Clearing userRef");
@@ -70,14 +76,20 @@ function MapGuess() {
         });
 
         // Sprawdź aktualny stan przy montowaniu
-        const currentUser = auth.currentUser;
-        if (currentUser) {
-            console.log("Initial auth state:", currentUser.uid);
-            setUserRef(currentUser.uid);
-            if (!division || division === "stare_miasto") {
-                enableDivisionsView();
+        const checkCurrentUser = async () => {
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+                const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+                if (userDoc.exists()) {
+                    console.log("Initial auth state - setting userRef to:", userDoc.id);
+                    setUserRef(userDoc.id);
+                    if (!division || division === "stare_miasto") {
+                        enableDivisionsView();
+                    }
+                }
             }
-        }
+        };
+        checkCurrentUser();
 
         return () => unsubscribe();
     }, []);
@@ -234,9 +246,9 @@ function MapGuess() {
         });
     };
 
-
     const handleDivisionHover = (info) => {
-        if (info && info.object) {
+        console.log("Hover info:", info);
+        if (info) {
             setHovered({ x: info.x, y: info.y });
             setName(info.name);
             setVisible(true);

@@ -4,10 +4,10 @@ import { UserLoginForm } from "./UserLoginForm";
 import { UserRegisterForm } from "./UserRegisterForm";
 import { auth, db } from "../config/firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 
 export const Login = ({ setUserRef, children }) => {
-  const [user, setUser] = useState();
+  const [user, setUser] = useState(auth.currentUser);
   const [nickname, setNickname] = useState("");
   const [isLoginView, setIsLoginView] = useState(false);
   const modalRef = useRef();

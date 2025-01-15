@@ -95,10 +95,13 @@ function MapComponent({ viewState, setViewState, layers, markers, pathData, opti
     stroked: true,
     filled: true,
     wireframe: true,
-    lineWidthMinPixels: 1,
+    lineWidthMinPixels: 2,
+    lineJointRounded: true,
     getPolygon: d => d.geometry.coordinates[0],
-    getLineColor: [80, 80, 80],
-    getFillColor: [0, 0, 0, 20],
+    getWidth: d => 10,
+    getLineColor: [238, 117, 8],
+    getFillColor: [225, 178, 141, 70],
+    
     onHover: info => {
       if (info.object) {
         onDivisionHover && onDivisionHover({

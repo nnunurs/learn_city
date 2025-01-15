@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../config/firebase";
-import { addDoc, collection } from "@firebase/firestore";
+import { setDoc, doc, addDoc, collection } from "@firebase/firestore";
 import { useForm } from "react-hook-form";
 
 import { UserGoogleLogin } from "./UserGoogleLogin";
@@ -26,7 +26,7 @@ export const UserRegisterForm = ({ setUser, setUserRef, setNickname }) => {
         data.password
       );
 
-      // Dodaj użytkownika do Firestore
+      // Dodaj użytkownika do Firestore z automatycznie wygenerowanym id
       const docRef = await addDoc(collection(db, "users"), {
         uid: userCredential.user.uid,
         nickname: data.nickname,

@@ -322,7 +322,6 @@ const Quiz = ({
     let tempStats = { wellKnown: 0, known: 0, almostKnown: 0, unknown: 0 };
     let tempStreetsToDraw = [];
     querySnapshot.forEach((doc) => {
-      console.log("Processing street:", doc.data().name, "count:", doc.data().count);
       if (streets[doc.data().name]) {
         switch (true) {
           case doc.data().count > 2:
