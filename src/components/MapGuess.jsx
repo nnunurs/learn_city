@@ -363,10 +363,10 @@ function MapGuess() {
                 navigationRef={navigationRef}
                 setNavigationRef={setNavigationRef}
             />
-            <Changelog
+            {/* <Changelog
                 version={changelog.version}
                 changes={changelog.changes}
-            />
+            /> */}
         </div>
     );
 }
